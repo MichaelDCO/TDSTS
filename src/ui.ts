@@ -301,7 +301,8 @@ export function openRewardFlow(): void {
   const run = g.run!;
   const def = COMBAT_PLAN[run.combatIndex - 1];
   const isLast = run.combatIndex >= TOTAL_COMBATS;
-  const goldReward = 10 + 2 * run.combatIndex + (def.kind === 'elite' ? 10 : 0);
+  let goldReward = 10 + 2 * run.combatIndex + (def.kind === 'elite' ? 10 : 0);
+  if (run.nodeRisky) goldReward *= 2; // butin doublé sur les nœuds risqués
   const heal = Math.min(run.mods.healPerCombat, heartMax(run) - run.heartHp);
   run.gold += goldReward;
   run.stats.goldEarned += goldReward;
@@ -329,13 +330,70 @@ export function openRewardFlow(): void {
     : '';
 
   const m = modal(`
-    <h1>✨ Combat remporté !</h1>
-    <p class="reward-line">💰 Butin : <b>+${goldReward} or</b></p>
+    <h1>✨ Combat remporté !${run.nodeRisky ? ' <span class="risky-tag">☠️ nœud risqué</span>' : ''}</h1>
+    <p class="reward-line">💰 Butin : <b>+${goldReward} or</b>${run.nodeRisky ? ' (doublé !)' : ''}</p>
     <p class="reward-line">❤️ Le Cœur récupère <b>${heal} PV</b></p>
     ${topHtml}
-    <button class="btn primary big" id="btn-next">Choisir un augment</button>
+    <button class="btn primary big" id="btn-next">Choisir un augment${run.nodeRisky ? ' rare' : ''}</button>
   `);
-  m.querySelector('#btn-next')!.addEventListener('click', () => openAugmentChoice(def.kind === 'elite'));
+  m.querySelector('#btn-next')!.addEventListener('click', () => openAugmentChoice(def.kind === 'elite', run.nodeRisky));
+}
+
+// Nœuds « libres » où le joueur choisit son chemin (les élites 4 et 7 et le boss 10 sont fixes)
+const FREE_NODES = [2, 3, 5, 6, 8, 9];
+
+/** Avance au nœud suivant : choix de chemin sur les nœuds libres, sinon combat direct. */
+function advanceToNextNode(): void {
+  const run = g.run!;
+  run.combatIndex++;
+  run.nodeRisky = false;
+  if (FREE_NODES.includes(run.combatIndex)) openNodeChoice();
+  else startCombatNode(false);
+}
+
+function startCombatNode(risky: boolean): void {
+  const run = g.run!;
+  run.nodeRisky = risky;
+  setupCombat(g);
+  g.screen = 'combat';
+  closeModal();
+  showScreen();
+  toastCombatIntro();
+}
+
+/** Choix de nœud façon carte StS : combat, combat risqué ou repos. */
+function openNodeChoice(): void {
+  const run = g.run!;
+  const def = COMBAT_PLAN[run.combatIndex - 1];
+  const healAmt = Math.min(18, heartMax(run) - run.heartHp);
+  const m = modal(`
+    <h1>🗺️ Choisissez votre chemin</h1>
+    <p class="subtitle">Nœud ${run.combatIndex}/${TOTAL_COMBATS} — ${def.name}</p>
+    <div class="node-row">
+      <div class="node-card" id="node-combat">
+        <div class="node-glyph">⚔️</div>
+        <div class="node-name">Combat</div>
+        <div class="node-desc">Affrontement standard. Butin et augment normaux.</div>
+      </div>
+      <div class="node-card risky" id="node-risky">
+        <div class="node-glyph">☠️</div>
+        <div class="node-name">Combat risqué</div>
+        <div class="node-desc">Ennemis +40 % PV — mais butin <b>doublé</b> et augment <b>rare garanti</b>.</div>
+      </div>
+      <div class="node-card rest" id="node-rest">
+        <div class="node-glyph">🏕️</div>
+        <div class="node-name">Repos</div>
+        <div class="node-desc">Le Cœur récupère <b>${healAmt} PV</b>… mais ni or, ni augment : le nœud est passé.</div>
+      </div>
+    </div>
+  `, 'node-modal');
+  m.querySelector('#node-combat')!.addEventListener('click', () => startCombatNode(false));
+  m.querySelector('#node-risky')!.addEventListener('click', () => startCombatNode(true));
+  m.querySelector('#node-rest')!.addEventListener('click', () => {
+    playSfx('augment');
+    run.heartHp = Math.min(heartMax(run), run.heartHp + 18);
+    advanceToNextNode();
+  });
 }
 
 function augmentCard(a: AugmentDef): string {
@@ -349,9 +407,9 @@ function augmentCard(a: AugmentDef): string {
     </div>`;
 }
 
-function openAugmentChoice(afterElite: boolean): void {
+function openAugmentChoice(afterElite: boolean, forceRare = false): void {
   const run = g.run!;
-  let offers = pickAugmentOffers(run, 3, afterElite);
+  let offers = pickAugmentOffers(run, 3, afterElite, forceRare);
   let rerollsLeft = run.mods.augRerolls;
 
   const draw = () => {
@@ -365,17 +423,13 @@ function openAugmentChoice(afterElite: boolean): void {
       el.addEventListener('click', () => {
         playSfx('augment');
         applyAugment(run, el.dataset.aug!);
-        run.combatIndex++;
-        setupCombat(g);
-        closeModal();
-        showScreen();
-        toastCombatIntro();
+        advanceToNextNode();
       });
     });
     m.querySelector('#btn-aug-reroll')!.addEventListener('click', () => {
       if (rerollsLeft <= 0) return;
       rerollsLeft--;
-      offers = pickAugmentOffers(run, 3, afterElite);
+      offers = pickAugmentOffers(run, 3, afterElite, forceRare);
       draw();
     });
   };
@@ -474,6 +528,7 @@ export function updateHUD(): void {
   $('tb-progress').innerHTML = `
     <span class="stat">${c.def.kind === 'elite' ? '👹 ' : c.def.kind === 'boss' ? '👑 ' : ''}Combat ${run.combatIndex}/${TOTAL_COMBATS}</span>
     ${run.ascension > 0 ? `<span class="stat asc" title="Ascension ${run.ascension}">🔥A${run.ascension}</span>` : ''}
+    ${run.nodeRisky ? '<span class="stat asc" title="Nœud risqué : ennemis +40 % PV, butin doublé">☠️</span>' : ''}
     <span class="stat dim">${c.def.name}</span>
     <span class="stat">🌊 Vague ${waveNum}/${c.waves.length}</span>`;
   $('tb-speed').querySelectorAll<HTMLButtonElement>('button[data-sp]').forEach((b) => {

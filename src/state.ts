@@ -77,6 +77,7 @@ export function newRun(g: Game, classId: ClassId, ascension = 0, seedOverride?: 
     deployBonus: 0,
     shopLocked: false,
     ascension: Math.max(0, Math.min(5, ascension)),
+    nodeRisky: false,
   };
   for (const defId of CLASSES[classId].startingTowers) addTower(run, defId);
   run.heartHp = heartMax(run);
@@ -205,8 +206,8 @@ export function towerEffStats(run: RunState, t: TowerInst): EffStats {
 // ---------- Augments ----------
 
 /** Tire `count` augments distincts à proposer, selon la classe et l'avancement. */
-export function pickAugmentOffers(run: RunState, count = 3, afterElite = false): AugmentDef[] {
-  const rareChance = Math.min(0.8, 0.22 + 0.04 * run.combatIndex + (afterElite ? 0.18 : 0));
+export function pickAugmentOffers(run: RunState, count = 3, afterElite = false, forceRare = false): AugmentDef[] {
+  const rareChance = forceRare ? 1 : Math.min(0.8, 0.22 + 0.04 * run.combatIndex + (afterElite ? 0.18 : 0));
   const pool = augmentsForClass(run.classId).filter(
     (a) => a.stackable || !run.augments.includes(a.id),
   );

@@ -155,6 +155,7 @@ function spawnEnemy(g: Game, enemyId: string, portalId: string, startDist = 0): 
   let ascMult = 1;
   if (run.ascension >= 1) ascMult += 0.1;
   if (run.ascension >= 5) ascMult += 0.3;
+  if (run.nodeRisky) ascMult += 0.4; // nœud risqué : ennemis nettement plus coriaces
   const hp = Math.round(def.hp * c.hpMult * wMult * ascMult);
   const e: EnemyInst = {
     uid: enemyUid++,

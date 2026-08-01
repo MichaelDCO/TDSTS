@@ -216,6 +216,8 @@ export function installDevBot(g: Game): void {
         const best = o.smartAug ? cards.sort((a, b) => rank(a) - rank(b))[0] : cards[0];
         best.click();
       }
+      // nœud à choix (carte StS) : le bot joue la ligne standard
+      $('node-combat')?.click();
       if ((g.screen as string) === 'victory') {
         report.push('VICTORY, kills=' + g.run.stats.kills);
         break;
