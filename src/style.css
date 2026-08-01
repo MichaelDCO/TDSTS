@@ -134,6 +134,7 @@ body {
   }
 }
 
+
 .tb-spacer {
   flex: 1;
 }
@@ -846,4 +847,68 @@ canvas#game {
 
 #tower-popover .btn-row {
   margin-top: 8px;
+}
+
+/* ---------- Mobile (en fin de feuille : priorité aux règles ci-dessous) ---------- */
+@media (max-width: 640px) {
+  #app {
+    padding: 4px 6px;
+    gap: 6px;
+  }
+
+  #topbar {
+    flex-wrap: wrap;
+    gap: 5px 10px;
+    padding: 6px 8px;
+    min-height: 0;
+  }
+
+  .tb-spacer {
+    display: none;
+  }
+
+  #tb-speed {
+    width: 100%;
+    justify-content: center;
+  }
+
+  #tb-speed .btn.tiny {
+    padding: 5px 14px;
+  }
+
+  .chip {
+    font-size: 12px;
+    padding: 2px 9px;
+  }
+
+  .stat {
+    font-size: 12.5px;
+  }
+
+  #shop-panel {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  #shop-head {
+    flex-wrap: wrap;
+  }
+
+  .shop-card {
+    width: 74px;
+    height: 86px;
+  }
+
+  #wave-panel {
+    padding: 10px;
+  }
+
+  .btn.primary#btn-wave {
+    padding: 12px 10px;
+    font-size: 15px;
+  }
+
+  #tower-popover {
+    width: 210px;
+  }
 }
