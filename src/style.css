@@ -911,4 +911,53 @@ canvas#game {
   #tower-popover {
     width: 210px;
   }
+
+  .modal {
+    padding: 18px 14px;
+  }
+
+  /* augments : cartes empilées en format ligne (glyphe | texte) */
+  .augment-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .augment-card {
+    max-width: none;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 46px 1fr;
+    grid-template-areas: 'g name' 'g class' 'g desc';
+    column-gap: 12px;
+    row-gap: 2px;
+    text-align: left;
+    padding: 12px 14px;
+  }
+
+  .aug-glyph {
+    grid-area: g;
+    align-self: center;
+    font-size: 28px;
+  }
+
+  .aug-name {
+    grid-area: name;
+  }
+
+  .aug-class {
+    grid-area: class;
+  }
+
+  .aug-desc {
+    grid-area: desc;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .class-passive {
+    font-size: 12px;
+  }
 }
