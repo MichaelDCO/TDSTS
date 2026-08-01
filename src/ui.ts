@@ -1,4 +1,5 @@
 import { isMuted, playSfx, toggleMute } from './audio';
+import { playMusic, stopMusic } from './music';
 import { CELL, CLASS_COLORS, CLASS_NAMES, RARITY_COLORS, RARITY_NAMES, TOTAL_COMBATS } from './const';
 import { setupCombat, startWave, upcomingPortals } from './combat';
 import { AUGMENTS } from './data/augments';
@@ -53,6 +54,18 @@ export function initUI(game: Game, cv: HTMLCanvasElement): void {
 
 // ---------- Écrans ----------
 
+/** Adapte la musique 8 bits à l'écran courant (silence sur les écrans de fin). */
+export function syncMusic(): void {
+  if ((window as unknown as Record<string, unknown>).__botRunning) return;
+  if (isMuted()) {
+    stopMusic();
+    return;
+  }
+  if (g.screen === 'combat') playMusic(g.run && g.run.combatIndex >= 10 ? 'boss' : 'combat');
+  else if (g.screen === 'menu' || g.screen === 'class') playMusic('menu');
+  else stopMusic();
+}
+
 export function showScreen(): void {
   const inCombat = g.screen === 'combat';
   $('topbar').classList.toggle('hidden', !inCombat);
@@ -60,6 +73,7 @@ export function showScreen(): void {
   $('dock').classList.toggle('hidden', !inCombat);
   hidePopover();
   hideTooltip();
+  syncMusic();
   if (g.screen === 'menu') renderMenu();
   else if (g.screen === 'class') renderClassSelect();
   else if (g.screen === 'victory') renderEndScreen(true);
@@ -280,14 +294,14 @@ function augmentCard(a: AugmentDef): string {
 function openAugmentChoice(afterElite: boolean): void {
   const run = g.run!;
   let offers = pickAugmentOffers(run, 3, afterElite);
-  let rerollUsed = false;
+  let rerollsLeft = run.mods.augRerolls;
 
   const draw = () => {
     const m = modal(`
       <h1>Choisissez un augment</h1>
       <p class="subtitle">Général ou lié à votre classe — il s'applique pour tout le reste de la run</p>
       <div class="augment-row">${offers.map(augmentCard).join('')}</div>
-      <button class="btn small" id="btn-aug-reroll" ${rerollUsed ? 'disabled' : ''}>🎲 Relancer (gratuit, 1×)</button>
+      <button class="btn small" id="btn-aug-reroll" ${rerollsLeft <= 0 ? 'disabled' : ''}>🎲 Relancer (${rerollsLeft} gratuite${rerollsLeft > 1 ? 's' : ''})</button>
     `, 'augment-modal');
     m.querySelectorAll<HTMLElement>('.augment-card').forEach((el) => {
       el.addEventListener('click', () => {
@@ -301,8 +315,8 @@ function openAugmentChoice(afterElite: boolean): void {
       });
     });
     m.querySelector('#btn-aug-reroll')!.addEventListener('click', () => {
-      if (rerollUsed) return;
-      rerollUsed = true;
+      if (rerollsLeft <= 0) return;
+      rerollsLeft--;
       offers = pickAugmentOffers(run, 3, afterElite);
       draw();
     });
@@ -376,6 +390,7 @@ function buildSpeedButtons(): void {
   });
   $('btn-mute').addEventListener('click', () => {
     toggleMute();
+    syncMusic();
     updateHUD();
   });
 }
@@ -527,13 +542,13 @@ export function refreshDock(): void {
 }
 
 /** Composition de la prochaine vague, en pastilles colorées par type d'ennemi. */
-function wavePreviewHtml(): string {
+function waveChips(waveIdx: number): string {
   const c = g.combat!;
-  const wave = c.waves[c.waveIndex];
+  const wave = c.waves[waveIdx];
   if (!wave) return '';
   const counts = new Map<string, number>();
   for (const s of wave.spawns) counts.set(s.enemyId, (counts.get(s.enemyId) ?? 0) + 1);
-  const chips = [...counts.entries()]
+  return [...counts.entries()]
     .sort((a, b) => b[1] - a[1])
     .map(([id, n]) => {
       const def = ENEMIES[id];
@@ -542,7 +557,20 @@ function wavePreviewHtml(): string {
         <i style="background:${def.color}"></i>${def.kind === 'boss' ? '👑' : def.kind === 'elite' ? '👹' : ''}×${n}</span>`;
     })
     .join('');
-  return `<div class="wave-preview"><span class="wp-label">En approche :</span>${chips}</div>`;
+}
+
+function wavePreviewHtml(): string {
+  const c = g.combat!;
+  const run = g.run!;
+  const chips = waveChips(c.waveIndex);
+  if (!chips) return '';
+  let html = `<div class="wave-preview"><span class="wp-label">En approche :</span>${chips}</div>`;
+  // Divination (Watcher) : révèle aussi la vague suivante
+  if (CLASSES[run.classId].scryWaves >= 1) {
+    const next = waveChips(c.waveIndex + 1);
+    if (next) html += `<div class="wave-preview scry"><span class="wp-label">👁️ Puis :</span>${next}</div>`;
+  }
+  return html;
 }
 
 // ---------- Popover de tour posée ----------

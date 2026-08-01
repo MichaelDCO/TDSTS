@@ -31,6 +31,7 @@ export const CLASS_COLORS: Record<string, string> = {
   ironclad: '#e05545',
   silent: '#5fbf6e',
   defect: '#5fb7d4',
+  watcher: '#b48ad9',
   neutral: '#d9b96a',
   general: '#d9c88f',
 };
@@ -39,6 +40,7 @@ export const CLASS_NAMES: Record<string, string> = {
   ironclad: 'Ironclad',
   silent: 'La Silencieuse',
   defect: 'Le Defect',
+  watcher: 'La Watcher',
   neutral: 'Neutre',
   general: 'Général',
 };

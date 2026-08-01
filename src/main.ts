@@ -10,7 +10,7 @@ import {
 } from './state';
 import {
   hidePopover, hideTooltip, initUI, openDefeat, openRewardFlow, refreshDock, setAscension,
-  showPopover, updateHUD,
+  showPopover, syncMusic, updateHUD,
 } from './ui';
 import type { Vec } from './types';
 
@@ -99,6 +99,7 @@ window.addEventListener('keydown', (ev) => {
     updateHUD();
   } else if (ev.key === 'm' || ev.key === 'M') {
     toggleMute();
+    syncMusic();
     updateHUD();
   } else if ((ev.key === 'r' || ev.key === 'R') && !document.querySelector('.modal-overlay')) {
     (document.getElementById('btn-reroll') as HTMLButtonElement | null)?.click();

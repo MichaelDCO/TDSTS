@@ -54,6 +54,7 @@ export function baseModifiers(classId: ClassId): Modifiers {
     slowedAmpTaken: 0,
     dmgPerWaveCleared: 0,
     crossClassShop: false,
+    augRerolls: 1,
     flags: new Set<string>(),
   };
 }

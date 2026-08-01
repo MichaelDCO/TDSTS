@@ -1,5 +1,5 @@
 import { CELL, CLASS_COLORS, COLS, H, RARITY_COLORS, ROWS, W } from './const';
-import { heartPos, towerCenter, upcomingPortals } from './combat';
+import { heartPos, stanceOf, towerCenter, upcomingPortals } from './combat';
 import { TOWERS } from './data/towers';
 import { cellBuildable } from './shop';
 import { placedTowers, towerEffStats } from './state';
@@ -46,6 +46,16 @@ export function render(g: Game, ctx: CanvasRenderingContext2D): void {
     if (selected || hovered) {
       const stats = towerEffStats(g.run, t);
       drawRange(ctx, pos.x, pos.y, stats.range, CLASS_COLORS[def.classId]);
+    }
+    // halo de posture Colère (Watcher)
+    if (stanceOf(c, t, g.run.mods) === 'wrath') {
+      ctx.save();
+      ctx.strokeStyle = `rgba(255,120,80,${0.55 + Math.sin(c.time * 8) * 0.25})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, CELL * 0.52, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
     }
     drawTower(ctx, pos.x, pos.y, def.glyph, CLASS_COLORS[def.classId], RARITY_COLORS[def.rarity], selected, t.buffMult > 1);
   }

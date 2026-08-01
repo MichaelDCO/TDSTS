@@ -7,7 +7,7 @@ import { TOWERS } from './data/towers';
 import { rollShop } from './shop';
 import { heartMax, interestFor, placedTowers, towerEffStats } from './state';
 import type {
-  CombatState, EnemyInst, Floater, Game, HitEffects, Particle, PathGeom,
+  CombatState, EnemyInst, Floater, Game, HitEffects, Modifiers, Particle, PathGeom,
   Projectile, TowerInst, Vec,
 } from './types';
 
@@ -245,13 +245,18 @@ function killEnemy(g: Game, e: EnemyInst, creditUid?: number): void {
   const run = g.run!;
   e.alive = false;
   run.stats.kills++;
+  let creditTower: TowerInst | undefined;
   if (creditUid != null) {
-    const t = run.towers.find((x) => x.uid === creditUid);
-    if (t) t.kills++;
+    creditTower = run.towers.find((x) => x.uid === creditUid);
+    if (creditTower) creditTower.kills++;
   }
 
   // or : prime + augments + idoles à portée — plafonné par vague (anti-inflation)
   let gold = e.bounty + run.mods.goldPerKill;
+  // Marche du Vide : les éliminations en posture Colère rapportent +1 or
+  if (creditTower && run.mods.flags.has('wrath_gold') && stanceOf(c, creditTower, run.mods) === 'wrath') {
+    gold += 1;
+  }
   let idoleBonus = 0;
   for (const t of placedTowers(run)) {
     const def = TOWERS[t.defId];
@@ -403,6 +408,21 @@ function updateEnemies(g: Game, dt: number): void {
 
 // ---------- Tours ----------
 
+/** Posture actuelle d'une tour Watcher (cycle Calme → Colère, désynchronisé par uid). */
+export function stanceOf(c: CombatState, t: TowerInst, m: Modifiers): 'calm' | 'wrath' | null {
+  if (!TOWERS[t.defId].stance) return null;
+  const wrathDur = 1.8 + (m.flags.has('wrath_long') ? 1 : 0);
+  const cycle = 3.5 + wrathDur;
+  const phase = (c.time + t.uid * 0.9) % cycle;
+  return phase < 3.5 ? 'calm' : 'wrath';
+}
+
+function stanceDmgMult(st: 'calm' | 'wrath' | null, m: Modifiers): number {
+  if (st === 'calm') return m.flags.has('calm_strong') ? 0.85 : 0.7;
+  if (st === 'wrath') return 2.2;
+  return 1;
+}
+
 function recomputeAuras(g: Game): void {
   const run = g.run!;
   const towers = placedTowers(run);
@@ -511,6 +531,9 @@ function updateTowers(g: Game, dt: number): void {
     if (t.cooldown > 0) continue;
     const stats = towerEffStats(run, t);
     const tc = towerCenter(t);
+    const st = stanceOf(c, t, run.mods);
+    const sMult = stanceDmgMult(st, run.mods);
+    const cdMult = st === 'wrath' && run.mods.flags.has('wrath_haste') ? 0.8 : 1;
 
     if (def.kind === 'beam') {
       const targets = pickTargets(c, tc, stats.range, 1, true);
@@ -520,7 +543,7 @@ function updateTowers(g: Game, dt: number): void {
       }
       const e = targets[0];
       const crit = Math.random() < stats.critChance;
-      t.combatDmg += damageEnemy(g, e, crit ? stats.damage * run.mods.critDamage : stats.damage,
+      t.combatDmg += damageEnemy(g, e, (crit ? stats.damage * run.mods.critDamage : stats.damage) * sMult,
         { pierce: run.mods.armorPierce, crit });
       applyHitEffects(g, e, snapshotEffects(g, t.defId));
       // visuel : pointillés lumineux le long du rayon
@@ -534,7 +557,7 @@ function updateTowers(g: Game, dt: number): void {
       }
       playSfx('zap');
       if (e.hp <= 0 && e.alive) killEnemy(g, e, t.uid);
-      t.cooldown += stats.cooldown;
+      t.cooldown += stats.cooldown * cdMult;
       continue;
     }
 
@@ -549,7 +572,7 @@ function updateTowers(g: Game, dt: number): void {
       for (const e of targets) {
         if (stats.damage > 0) {
           const crit = Math.random() < stats.critChance;
-          t.combatDmg += damageEnemy(g, e, crit ? stats.damage * run.mods.critDamage : stats.damage,
+          t.combatDmg += damageEnemy(g, e, (crit ? stats.damage * run.mods.critDamage : stats.damage) * sMult,
             { pierce: run.mods.armorPierce, crit, quiet: targets.length > 6 });
         }
         if (def.mark) e.mark = { amp: def.mark.amp, t: def.mark.duration };
@@ -561,7 +584,7 @@ function updateTowers(g: Game, dt: number): void {
         color: def.classId === 'silent' ? '#7de08a' : '#ffb26b', size: 3, ring: true, maxR: stats.range,
       });
       playSfx('pulse');
-      t.cooldown += stats.cooldown;
+      t.cooldown += stats.cooldown * cdMult;
       continue;
     }
 
@@ -574,14 +597,14 @@ function updateTowers(g: Game, dt: number): void {
     playSfx('shoot');
     for (const target of targets) {
       const crit = Math.random() < stats.critChance;
-      const dmg = crit ? stats.damage * run.mods.critDamage : stats.damage;
+      const dmg = (crit ? stats.damage * run.mods.critDamage : stats.damage) * sMult;
       fireProjectile(g, t, target, dmg, crit);
       if (def.id === 'frappe' && run.mods.flags.has('frappe_double')) {
         const crit2 = Math.random() < stats.critChance;
-        fireProjectile(g, t, target, crit2 ? stats.damage * run.mods.critDamage : stats.damage, crit2);
+        fireProjectile(g, t, target, (crit2 ? stats.damage * run.mods.critDamage : stats.damage) * sMult, crit2);
       }
     }
-    t.cooldown += stats.cooldown;
+    t.cooldown += stats.cooldown * cdMult;
   }
 }
 

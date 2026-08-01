@@ -477,6 +477,16 @@ canvas#game {
   box-shadow: 0 0 8px rgba(255, 107, 94, 0.4);
 }
 
+.wave-preview.scry {
+  opacity: 0.75;
+  margin-top: 3px;
+}
+
+.wave-preview.scry .wp-chip {
+  font-size: 10.5px;
+  padding: 0 6px;
+}
+
 /* ---------- Modales ---------- */
 .modal-overlay {
   position: fixed;
@@ -611,13 +621,14 @@ canvas#game {
 /* choix de classe */
 .class-row {
   display: flex;
-  gap: 18px;
+  gap: 14px;
   justify-content: center;
   margin-top: 16px;
+  flex-wrap: wrap;
 }
 
 .class-card {
-  flex: 1;
+  flex: 1 1 240px;
   max-width: 330px;
   background: linear-gradient(180deg, #2a2148, #1d1631);
   border: 2px solid var(--cc);

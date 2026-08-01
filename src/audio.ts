@@ -32,6 +32,12 @@ function ensureCtx(): AudioContext | null {
   return ctx;
 }
 
+/** Bus audio partagé (utilisé par le séquenceur musical). */
+export function audioBus(): { ctx: AudioContext; master: GainNode } | null {
+  if (!ensureCtx() || !ctx || !master) return null;
+  return { ctx, master };
+}
+
 function tone(freq0: number, freq1: number, dur: number, type: OscillatorType, vol: number, delay = 0): void {
   if (!ctx || !master) return;
   const t0 = ctx.currentTime + delay;
@@ -79,28 +85,35 @@ export function playSfx(name: SfxName): void {
       case 'shoot': tone(760, 500, 0.055, 'square', 0.09); break;
       case 'zap': tone(1250, 320, 0.07, 'sawtooth', 0.08); break;
       case 'pulse': tone(230, 150, 0.09, 'sawtooth', 0.08); break;
-      case 'death': tone(430, 130, 0.13, 'triangle', 0.16); break;
+      case 'death': tone(392, 110, 0.12, 'square', 0.12); break;
       case 'heartHit':
         tone(170, 65, 0.35, 'sine', 0.5);
         noise(0.22, 0.28);
         break;
-      case 'waveStart': tone(290, 640, 0.16, 'triangle', 0.2); break;
-      case 'waveClear':
-        tone(523, 523, 0.09, 'triangle', 0.18);
-        tone(659, 659, 0.09, 'triangle', 0.18, 0.09);
-        tone(784, 784, 0.12, 'triangle', 0.2, 0.18);
+      case 'waveStart':
+        tone(262, 262, 0.07, 'square', 0.16);
+        tone(392, 392, 0.07, 'square', 0.16, 0.07);
+        tone(523, 523, 0.1, 'square', 0.18, 0.14);
         break;
-      case 'buy': tone(920, 1280, 0.08, 'triangle', 0.18); break;
+      case 'waveClear':
+        tone(523, 523, 0.08, 'square', 0.15);
+        tone(659, 659, 0.08, 'square', 0.15, 0.08);
+        tone(784, 784, 0.12, 'square', 0.17, 0.16);
+        break;
+      case 'buy':
+        // le « bling » de pièce à l'ancienne
+        tone(988, 988, 0.05, 'square', 0.14);
+        tone(1319, 1319, 0.12, 'square', 0.14, 0.05);
+        break;
       case 'sell': tone(720, 370, 0.1, 'triangle', 0.16); break;
       case 'place': tone(190, 115, 0.08, 'square', 0.16); break;
       case 'reroll': tone(490, 810, 0.06, 'square', 0.12); break;
       case 'lock': tone(600, 600, 0.05, 'square', 0.12); break;
       case 'augment':
-        tone(660, 990, 0.22, 'sine', 0.2);
-        tone(830, 1240, 0.22, 'sine', 0.14, 0.1);
+        [660, 880, 1100].forEach((f, i) => tone(f, f, 0.11, 'square', 0.13, i * 0.08));
         break;
       case 'victory':
-        [523, 659, 784, 1047].forEach((f, i) => tone(f, f, 0.16, 'triangle', 0.22, i * 0.13));
+        [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, f, 0.14, 'square', 0.17, i * 0.12));
         break;
       case 'defeat': tone(210, 85, 0.8, 'sawtooth', 0.25); break;
     }

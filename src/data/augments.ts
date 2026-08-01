@@ -206,6 +206,48 @@ export const AUGMENTS: Record<string, AugmentDef> = {
     desc: 'À chaque fin de vague, votre tour du Defect avec le plus d’éliminations gagne +1 dégât permanent.',
     apply: (_r, m) => { m.flags.add('recalibrage'); },
   },
+
+  // ---------- LA WATCHER ----------
+  ferveur: {
+    id: 'ferveur', name: 'Ferveur', glyph: '🕉️', classId: 'watcher', rarity: 'common', stackable: true,
+    desc: 'Les tours de la Watcher infligent +12 % de dégâts.',
+    apply: (_r, m) => { m.dmgMultByClass.watcher = (m.dmgMultByClass.watcher ?? 0) + 0.12; },
+  },
+  poigne: {
+    id: 'poigne', name: 'Poigne de Fer', glyph: '✊', classId: 'watcher', rarity: 'common', stackable: true,
+    desc: 'Les tours de la Watcher gagnent +3 dégâts fixes par attaque.',
+    apply: (_r, m) => { m.flatDmgByClass.watcher = (m.flatDmgByClass.watcher ?? 0) + 3; },
+  },
+  calme_profond: {
+    id: 'calme_profond', name: 'Calme Profond', glyph: '🧘', classId: 'watcher', rarity: 'common',
+    desc: 'La posture Calme ne réduit presque plus les dégâts (×0,85 au lieu de ×0,7).',
+    apply: (_r, m) => { m.flags.add('calm_strong'); },
+  },
+  troisieme_oeil: {
+    id: 'troisieme_oeil', name: 'Troisième Œil', glyph: '🔮', classId: 'watcher', rarity: 'common',
+    desc: 'Les tours de la Watcher gagnent +15 % de chance de critique.',
+    apply: (_r, m) => { m.critChanceByClass.watcher = (m.critChanceByClass.watcher ?? 0) + 0.15; },
+  },
+  pressentiment: {
+    id: 'pressentiment', name: 'Pressentiment', glyph: '🃏', classId: 'watcher', rarity: 'common',
+    desc: '+1 relance gratuite à chaque écran d’augment.',
+    apply: (_r, m) => { m.augRerolls += 1; },
+  },
+  colere_prolongee: {
+    id: 'colere_prolongee', name: 'Colère Prolongée', glyph: '😡', classId: 'watcher', rarity: 'rare',
+    desc: 'La posture Colère dure 1 seconde de plus.',
+    apply: (_r, m) => { m.flags.add('wrath_long'); },
+  },
+  illumination: {
+    id: 'illumination', name: 'Illumination', glyph: '💡', classId: 'watcher', rarity: 'rare',
+    desc: 'Pendant la Colère, les tours de la Watcher attaquent 25 % plus vite.',
+    apply: (_r, m) => { m.flags.add('wrath_haste'); },
+  },
+  marche_vide: {
+    id: 'marche_vide', name: 'Marche du Vide', glyph: '🌌', classId: 'watcher', rarity: 'rare',
+    desc: 'Les ennemis éliminés par une tour en Colère rapportent +1 or.',
+    apply: (_r, m) => { m.flags.add('wrath_gold'); },
+  },
 };
 
 export function augmentsForClass(classId: string, crossClass = false): AugmentDef[] {

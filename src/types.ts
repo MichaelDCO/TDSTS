@@ -1,6 +1,6 @@
 // ---------- Types partagés ----------
 
-export type ClassId = 'ironclad' | 'silent' | 'defect';
+export type ClassId = 'ironclad' | 'silent' | 'defect' | 'watcher';
 export type TowerClass = ClassId | 'neutral';
 export type Rarity = 'common' | 'uncommon' | 'rare';
 export type AugRarity = 'common' | 'rare';
@@ -56,6 +56,8 @@ export interface TowerDef {
   goldAura?: number; // +or par élimination à portée
   // foudre en chaîne (Defect)
   chain?: { jumps: number; range: number; decay: number };
+  // postures (Watcher) : alterne Calme (dégâts réduits) et Colère (dégâts amplifiés)
+  stance?: boolean;
 }
 
 export interface TowerInst {
@@ -243,6 +245,7 @@ export interface Modifiers {
   slowedAmpTaken: number; // les ennemis ralentis subissent +% de dégâts
   dmgPerWaveCleared: number;
   crossClassShop: boolean;
+  augRerolls: number; // relances gratuites par écran d'augment
   flags: Set<string>;
 }
 

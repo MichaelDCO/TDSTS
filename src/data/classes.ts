@@ -13,9 +13,10 @@ export interface ClassDef {
   extraShopSlots: number;
   extraHealPerCombat: number;
   extraDeploy: number;
+  scryWaves: number; // vagues supplémentaires visibles dans l'aperçu (Divination)
 }
 
-export const ALL_CLASS_IDS: ClassId[] = ['ironclad', 'silent', 'defect'];
+export const ALL_CLASS_IDS: ClassId[] = ['ironclad', 'silent', 'defect', 'watcher'];
 
 export const CLASSES: Record<ClassId, ClassDef> = {
   ironclad: {
@@ -31,6 +32,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     extraShopSlots: 0,
     extraHealPerCombat: 5,
     extraDeploy: 0,
+    scryWaves: 0,
   },
   silent: {
     id: 'silent',
@@ -45,6 +47,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     extraShopSlots: 1,
     extraHealPerCombat: 0,
     extraDeploy: 0,
+    scryWaves: 0,
   },
   defect: {
     id: 'defect',
@@ -59,5 +62,21 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     extraShopSlots: 0,
     extraHealPerCombat: 0,
     extraDeploy: 1,
+    scryWaves: 0,
+  },
+  watcher: {
+    id: 'watcher',
+    name: 'La Watcher',
+    title: 'La moniale aux yeux ouverts',
+    color: '#b48ad9',
+    glyph: '👁️',
+    desc: 'Postures : ses tours alternent Calme (retenue) et Colère (dégâts ×2,2). Le rythme est une arme.',
+    passiveName: 'Divination',
+    passiveDesc: 'L’aperçu « En approche » révèle aussi la vague suivante.',
+    startingTowers: ['paume', 'paume', 'roue'],
+    extraShopSlots: 0,
+    extraHealPerCombat: 0,
+    extraDeploy: 0,
+    scryWaves: 1,
   },
 };
