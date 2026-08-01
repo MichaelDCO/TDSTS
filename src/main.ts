@@ -9,7 +9,8 @@ import {
   placedTowers, towerEffStats,
 } from './state';
 import {
-  hidePopover, hideTooltip, initUI, openDefeat, openRewardFlow, refreshDock, showPopover, updateHUD,
+  hidePopover, hideTooltip, initUI, openDefeat, openRewardFlow, refreshDock, setAscension,
+  showPopover, updateHUD,
 } from './ui';
 import type { Vec } from './types';
 
@@ -175,6 +176,7 @@ requestAnimationFrame(frame);
   updateHUD,
   openRewardFlow,
   openDefeat,
+  setAscension,
 };
 
 if (import.meta.env.DEV) {

@@ -8,8 +8,8 @@ import { ENEMIES } from './data/enemies';
 import { TOWERS } from './data/towers';
 import { buyTower, pickupTower, rerollShop, sellTower } from './shop';
 import {
-  MAX_DEPLOY_BONUS, applyAugment, benchTowers, buyDeploySlot, deployCapFor, deploySlotCost,
-  heartMax, interestFor, newRun, pickAugmentOffers, placedTowers, towerEffStats,
+  ASCENSION_DESCS, MAX_DEPLOY_BONUS, applyAugment, benchTowers, buyDeploySlot, deployCapFor,
+  deploySlotCost, heartMax, interestFor, newRun, pickAugmentOffers, placedTowers, towerEffStats,
 } from './state';
 import type { AugmentDef, ClassId, Game, TowerDef, TowerInst } from './types';
 
@@ -89,6 +89,21 @@ interface RunRecord {
   c: number; // combat atteint
   kills: number;
   date: number;
+  a?: number; // niveau d'Ascension
+}
+
+export function maxAscension(): number {
+  try {
+    return Math.max(0, Math.min(5, Number(localStorage.getItem('rtd-ascension') ?? '0') || 0));
+  } catch {
+    return 0;
+  }
+}
+
+let chosenAscension = -1; // -1 = pas encore initialisé (défaut : max débloqué)
+
+export function setAscension(n: number): void {
+  chosenAscension = Math.max(0, Math.min(maxAscension(), n));
 }
 
 function loadRecords(): RunRecord[] {
@@ -105,8 +120,13 @@ function saveRunRecord(victory: boolean): void {
   run.recorded = true;
   if ((window as unknown as Record<string, unknown>).__botRunning) return; // les runs du bot ne comptent pas
   const recs = loadRecords();
-  recs.push({ v: victory ? 1 : 0, cls: run.classId, c: run.combatIndex, kills: run.stats.kills, date: Date.now() });
+  recs.push({ v: victory ? 1 : 0, cls: run.classId, c: run.combatIndex, kills: run.stats.kills, date: Date.now(), a: run.ascension });
   localStorage.setItem('rtd-records', JSON.stringify(recs.slice(-30)));
+  // une victoire débloque le niveau d'Ascension suivant
+  if (victory) {
+    const next = Math.min(5, Math.max(maxAscension(), run.ascension + 1));
+    localStorage.setItem('rtd-ascension', String(next));
+  }
 }
 
 function recordsSummaryHtml(): string {
@@ -114,9 +134,10 @@ function recordsSummaryHtml(): string {
   if (!recs.length) return '';
   const wins = recs.filter((r) => r.v).length;
   const best = recs.reduce((a, b) => (b.v > a.v || (b.v === a.v && b.c > a.c) ? b : a));
+  const ascTxt = best.a && best.a > 0 ? ` 🔥A${best.a}` : '';
   const bestTxt = best.v
-    ? `victoire avec ${CLASSES[best.cls].name}`
-    : `combat ${best.c} atteint (${CLASSES[best.cls].name})`;
+    ? `victoire avec ${CLASSES[best.cls].name}${ascTxt}`
+    : `combat ${best.c} atteint (${CLASSES[best.cls].name}${ascTxt})`;
   return `<p class="records-line">📜 ${recs.length} run${recs.length > 1 ? 's' : ''} — ${wins} victoire${wins > 1 ? 's' : ''} • Meilleure : ${bestTxt}</p>`;
 }
 
@@ -146,6 +167,18 @@ function renderMenu(): void {
 }
 
 function renderClassSelect(): void {
+  const maxAsc = maxAscension();
+  if (chosenAscension < 0) chosenAscension = maxAsc;
+  chosenAscension = Math.min(chosenAscension, maxAsc);
+  const ascHtml = maxAsc > 0
+    ? `<div class="asc-row">🔥 Ascension :
+        ${Array.from({ length: maxAsc + 1 }, (_, i) =>
+    `<button class="btn tiny ${i === chosenAscension ? 'active' : ''}" data-asc="${i}">${i}</button>`).join('')}
+      </div>
+      ${chosenAscension > 0
+    ? `<p class="asc-desc">${ASCENSION_DESCS.slice(1, chosenAscension + 1).join(' • ')}</p>`
+    : '<p class="asc-desc dim">Difficulté normale</p>'}`
+    : '';
   const cards = (Object.keys(CLASSES) as ClassId[]).map((id) => {
     const c = CLASSES[id];
     const towers = c.startingTowers.map((tid) => TOWERS[tid].glyph).join(' ');
@@ -160,11 +193,17 @@ function renderClassSelect(): void {
         <button class="btn primary">Choisir</button>
       </div>`;
   }).join('');
-  const m = modal(`<h1>Choisissez votre champion</h1><div class="class-row">${cards}</div>`, 'class-modal');
+  const m = modal(`<h1>Choisissez votre champion</h1>${ascHtml}<div class="class-row">${cards}</div>`, 'class-modal');
+  m.querySelectorAll<HTMLButtonElement>('.asc-row button').forEach((b) => {
+    b.addEventListener('click', () => {
+      chosenAscension = Number(b.dataset.asc);
+      renderClassSelect();
+    });
+  });
   m.querySelectorAll<HTMLElement>('.class-card').forEach((el) => {
     el.querySelector('button')!.addEventListener('click', () => {
       const cls = el.dataset.class as ClassId;
-      newRun(g, cls);
+      newRun(g, cls, Math.max(0, chosenAscension));
       setupCombat(g);
       g.screen = 'combat';
       showScreen();
@@ -283,8 +322,8 @@ function renderEndScreen(victory: boolean): void {
   const m = modal(`
     <h1>${victory ? '👑 VICTOIRE !' : '💀 Le Cœur a été détruit…'}</h1>
     <p class="subtitle">${victory
-      ? 'Le Roi des Slimes n’est plus qu’une flaque. La Flèche est sauvée.'
-      : `Vous avez tenu jusqu'au combat ${run.combatIndex} (${COMBAT_PLAN[run.combatIndex - 1].name}).`}</p>
+      ? `Le Roi des Slimes n’est plus qu’une flaque. La Flèche est sauvée${run.ascension > 0 ? ` — en Ascension ${run.ascension} !` : '.'}${run.ascension < 5 && maxAscension() <= run.ascension + 1 ? ' 🔥 Ascension suivante débloquée !' : ''}`
+      : `Vous avez tenu jusqu'au combat ${run.combatIndex}${run.ascension > 0 ? ` en Ascension ${run.ascension}` : ''} (${COMBAT_PLAN[run.combatIndex - 1].name}).`}</p>
     <div class="stats-grid">
       <div><b>${s.kills}</b><span>ennemis éliminés</span></div>
       <div><b>${s.wavesCleared}</b><span>vagues repoussées</span></div>
@@ -354,6 +393,7 @@ export function updateHUD(): void {
   const waveNum = Math.min(c.waveIndex + 1, c.waves.length);
   $('tb-progress').innerHTML = `
     <span class="stat">${c.def.kind === 'elite' ? '👹 ' : c.def.kind === 'boss' ? '👑 ' : ''}Combat ${run.combatIndex}/${TOTAL_COMBATS}</span>
+    ${run.ascension > 0 ? `<span class="stat asc" title="Ascension ${run.ascension}">🔥A${run.ascension}</span>` : ''}
     <span class="stat dim">${c.def.name}</span>
     <span class="stat">🌊 Vague ${waveNum}/${c.waves.length}</span>`;
   $('tb-speed').querySelectorAll<HTMLButtonElement>('button[data-sp]').forEach((b) => {

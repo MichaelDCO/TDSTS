@@ -58,7 +58,7 @@ export function baseModifiers(classId: ClassId): Modifiers {
   };
 }
 
-export function newRun(g: Game, classId: ClassId): void {
+export function newRun(g: Game, classId: ClassId, ascension = 0): void {
   const seed = (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0;
   const run: RunState = {
     classId,
@@ -75,8 +75,10 @@ export function newRun(g: Game, classId: ClassId): void {
     uidCounter: 1,
     deployBonus: 0,
     shopLocked: false,
+    ascension: Math.max(0, Math.min(5, ascension)),
   };
   for (const defId of CLASSES[classId].startingTowers) addTower(run, defId);
+  run.heartHp = heartMax(run);
   g.run = run;
   g.speed = 1;
   g.paused = false;
@@ -101,8 +103,18 @@ export function addTower(run: RunState, defId: string): TowerInst {
 }
 
 export function heartMax(run: RunState): number {
-  return HEART_BASE_HP + run.mods.heartMaxBonus;
+  return HEART_BASE_HP + run.mods.heartMaxBonus - (run.ascension >= 3 ? 10 : 0);
 }
+
+// Malus cumulatifs des niveaux d'Ascension (index 1..5)
+export const ASCENSION_DESCS = [
+  '',
+  'Les ennemis ont +10 % de PV',
+  'L’or d’éliminations par vague est réduit',
+  'Le Cœur perd 10 PV max',
+  'Les ennemis sont 10 % plus rapides',
+  'Les ennemis ont +20 % de PV supplémentaires',
+];
 
 export function interestFor(run: RunState): number {
   return Math.min(Math.floor(run.gold / 10), run.mods.interestCap);

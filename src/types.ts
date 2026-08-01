@@ -288,6 +288,7 @@ export interface RunState extends RunLike {
   uidCounter: number;
   deployBonus: number; // emplacements de déploiement achetés (à la TFT)
   shopLocked: boolean; // verrouillage de la boutique (lock TFT)
+  ascension: number; // niveau d'Ascension de la run (0 = normal, max 5)
   recorded?: boolean; // la fin de run a déjà été archivée (localStorage)
 }
 

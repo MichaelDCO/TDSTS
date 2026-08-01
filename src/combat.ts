@@ -152,7 +152,10 @@ function spawnEnemy(g: Game, enemyId: string, portalId: string, startDist = 0): 
   const def = ENEMIES[enemyId];
   const run = g.run!;
   const wMult = waveHpMult(c.waveIndex + 1);
-  const hp = Math.round(def.hp * c.hpMult * wMult);
+  let ascMult = 1;
+  if (run.ascension >= 1) ascMult += 0.1;
+  if (run.ascension >= 5) ascMult += 0.2;
+  const hp = Math.round(def.hp * c.hpMult * wMult * ascMult);
   const e: EnemyInst = {
     uid: enemyUid++,
     defId: enemyId,
@@ -258,7 +261,7 @@ function killEnemy(g: Game, e: EnemyInst, creditUid?: number): void {
     if (Math.hypot(e.pos.x - tc.x, e.pos.y - tc.y) <= range) idoleBonus += def.goldAura;
   }
   gold += Math.min(3, idoleBonus);
-  const cap = killGoldCap(run.combatIndex);
+  const cap = killGoldCap(run.combatIndex) - (run.ascension >= 2 ? 3 : 0);
   gold = Math.max(0, Math.min(gold, cap - c.waveKillGold));
   c.waveKillGold += gold;
   if (gold > 0) {
@@ -333,6 +336,7 @@ function maxSlow(e: EnemyInst): number {
 function updateEnemies(g: Game, dt: number): void {
   const c = g.combat!;
   const m = g.run!.mods;
+  const ascSpeed = g.run!.ascension >= 4 ? 1.1 : 1;
   for (const e of c.enemies) {
     if (!e.alive) continue;
 
@@ -383,7 +387,7 @@ function updateEnemies(g: Game, dt: number): void {
     }
 
     // déplacement
-    const speed = e.def.speed * e.accelMult * (e.enraged ? e.def.enrage!.speedMult : 1) * (1 - maxSlow(e));
+    const speed = e.def.speed * ascSpeed * e.accelMult * (e.enraged ? e.def.enrage!.speedMult : 1) * (1 - maxSlow(e));
     e.dist += speed * dt;
     const path = c.paths[e.portalId];
     if (e.dist >= path.total) {

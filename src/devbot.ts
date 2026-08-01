@@ -8,10 +8,11 @@ import { benchTowers, buyDeploySlot, placedTowers } from './state';
 import type { CombatState, Game } from './types';
 
 interface BotOpts {
-  classIdx?: number; // 0 = Ironclad, 1 = Silencieuse
+  classIdx?: number; // 0 = Ironclad, 1 = Silencieuse, 2 = Defect
   cheatGold?: number;
   deployAt?: number; // acheter un slot de déploiement dès que l'or dépasse ce seuil
   smartAug?: boolean;
+  ascension?: number;
 }
 
 // Priorités d'augments par classe : le bot joue les synergies (poison pour la
@@ -58,11 +59,13 @@ function bestSpots(c: CombatState): { x: number; y: number; cov: number }[] {
 
 export function installDevBot(g: Game): void {
   (window as unknown as Record<string, unknown>).__bot = (opts: BotOpts = {}) => {
-    const o = { classIdx: 0, cheatGold: 0, deployAt: 80, smartAug: true, ...opts };
+    const o = { classIdx: 0, cheatGold: 0, deployAt: 80, smartAug: true, ascension: 0, ...opts };
     const $ = (id: string) => document.getElementById(id);
     const w = window as unknown as Record<string, unknown>;
     w.__botRunning = true; // les runs du bot ne polluent pas l'archive localStorage
     try {
+    const rtdApi = w.__rtd as { setAscension?: (n: number) => void };
+    rtdApi.setAscension?.(o.ascension);
 
     // reset : depuis le menu, un combat en cours ou un écran de fin
     if ($('btn-play')) $('btn-play')!.click();

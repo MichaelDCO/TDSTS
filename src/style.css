@@ -583,6 +583,31 @@ canvas#game {
   color: var(--gold);
 }
 
+/* Ascension */
+.asc-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.asc-desc {
+  font-size: 12.5px;
+  color: #ffb26b;
+  margin-bottom: 4px;
+}
+
+.asc-desc.dim {
+  color: var(--dim);
+}
+
+.stat.asc {
+  color: #ffb26b;
+}
+
 /* choix de classe */
 .class-row {
   display: flex;
