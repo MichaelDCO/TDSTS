@@ -111,6 +111,8 @@ export function setupCombat(g: Game): void {
     t.cell = null;
     t.cooldown = 0;
     t.buffMult = 1;
+    t.speedBuff = 1;
+    t.combatDmg = 0;
   }
   g.ui.selectedBench = null;
   g.ui.selectedTower = null;
@@ -514,7 +516,7 @@ function updateTowers(g: Game, dt: number): void {
       }
       const e = targets[0];
       const crit = Math.random() < stats.critChance;
-      damageEnemy(g, e, crit ? stats.damage * run.mods.critDamage : stats.damage,
+      t.combatDmg += damageEnemy(g, e, crit ? stats.damage * run.mods.critDamage : stats.damage,
         { pierce: run.mods.armorPierce, crit });
       applyHitEffects(g, e, snapshotEffects(g, t.defId));
       // visuel : pointillés lumineux le long du rayon
@@ -543,9 +545,8 @@ function updateTowers(g: Game, dt: number): void {
       for (const e of targets) {
         if (stats.damage > 0) {
           const crit = Math.random() < stats.critChance;
-          const dealt = damageEnemy(g, e, crit ? stats.damage * run.mods.critDamage : stats.damage,
+          t.combatDmg += damageEnemy(g, e, crit ? stats.damage * run.mods.critDamage : stats.damage,
             { pierce: run.mods.armorPierce, crit, quiet: targets.length > 6 });
-          void dealt;
         }
         if (def.mark) e.mark = { amp: def.mark.amp, t: def.mark.duration };
         applyHitEffects(g, e, fx);
@@ -611,8 +612,10 @@ function updateProjectiles(g: Game, dt: number): void {
       } else if (target) {
         victims.push(target);
       }
+      const srcTower = p.sourceUid != null ? run.towers.find((t) => t.uid === p.sourceUid) : undefined;
       for (const e of victims) {
-        damageEnemy(g, e, p.damage, { pierce: p.effects.armorPierce, ignoreArmor: p.effects.ignoreArmor, crit: p.crit });
+        const dealt = damageEnemy(g, e, p.damage, { pierce: p.effects.armorPierce, ignoreArmor: p.effects.ignoreArmor, crit: p.crit });
+        if (srcTower) srcTower.combatDmg += dealt;
         applyHitEffects(g, e, p.effects);
         if (e.hp <= 0 && e.alive) killEnemy(g, e, p.sourceUid);
       }

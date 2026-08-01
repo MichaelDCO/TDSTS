@@ -68,6 +68,7 @@ export interface TowerInst {
   buffMult: number; // bonus d'aura de dégâts (étendard), recalculé en continu
   speedBuff: number; // bonus d'aura de cadence (condensateur), recalculé en continu
   permDmg: number; // dégâts permanents acquis (Recalibrage)
+  combatDmg: number; // dégâts directs infligés durant le combat en cours (récapitulatif)
 }
 
 // ---------- Ennemis ----------

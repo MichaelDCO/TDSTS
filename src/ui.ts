@@ -9,7 +9,7 @@ import { TOWERS } from './data/towers';
 import { buyTower, pickupTower, rerollShop, sellTower } from './shop';
 import {
   MAX_DEPLOY_BONUS, applyAugment, benchTowers, buyDeploySlot, deployCapFor, deploySlotCost,
-  heartMax, interestFor, newRun, pickAugmentOffers, towerEffStats,
+  heartMax, interestFor, newRun, pickAugmentOffers, placedTowers, towerEffStats,
 } from './state';
 import type { AugmentDef, ClassId, Game, TowerDef, TowerInst } from './types';
 
@@ -203,10 +203,25 @@ export function openRewardFlow(): void {
     return;
   }
 
+  const top = placedTowers(run)
+    .filter((t) => t.combatDmg > 0)
+    .sort((a, b) => b.combatDmg - a.combatDmg)
+    .slice(0, 3);
+  const medals = ['🥇', '🥈', '🥉'];
+  const topHtml = top.length
+    ? `<div class="top-towers"><span class="dim">Meilleures tours (dégâts directs)</span>${top
+      .map((t, i) => {
+        const def = TOWERS[t.defId];
+        return `<span class="best-tower">${medals[i]} ${def.glyph} ${def.name} — <b>${Math.round(t.combatDmg)}</b></span>`;
+      })
+      .join('')}</div>`
+    : '';
+
   const m = modal(`
     <h1>✨ Combat remporté !</h1>
     <p class="reward-line">💰 Butin : <b>+${goldReward} or</b></p>
     <p class="reward-line">❤️ Le Cœur récupère <b>${heal} PV</b></p>
+    ${topHtml}
     <button class="btn primary big" id="btn-next">Choisir un augment</button>
   `);
   m.querySelector('#btn-next')!.addEventListener('click', () => openAugmentChoice(def.kind === 'elite'));

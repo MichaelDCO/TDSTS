@@ -556,6 +556,33 @@ canvas#game {
   margin: 8px 0;
 }
 
+.top-towers {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 16px;
+  margin: 14px auto 16px;
+  max-width: 420px;
+}
+
+.top-towers .dim {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.best-tower {
+  font-size: 14px;
+}
+
+.best-tower b {
+  color: var(--gold);
+}
+
 /* choix de classe */
 .class-row {
   display: flex;

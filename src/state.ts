@@ -94,6 +94,7 @@ export function addTower(run: RunState, defId: string): TowerInst {
     buffMult: 1,
     speedBuff: 1,
     permDmg: 0,
+    combatDmg: 0,
   };
   run.towers.push(t);
   return t;
