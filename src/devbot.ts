@@ -26,6 +26,11 @@ const AUG_PRIO_BY_CLASS: Record<string, string[]> = {
     'apprentissage', 'ombre', 'mille_coups', 'precision', 'reflexes', 'critique', 'huile_noire',
     'longue_vue', 'percant',
   ],
+  defect: [
+    'surcharge', 'condensat', 'double_orbe', 'conductivite', 'recalibrage', 'turbo',
+    'givre_noir', 'eclats_statiques', 'pacte_sanglant', 'veteran', 'apprentissage',
+    'reflexes', 'critique', 'longue_vue', 'percant',
+  ],
 };
 
 function cost(defId: string): number {
@@ -92,7 +97,7 @@ export function installDevBot(g: Game): void {
           rerollShop(g);
           rerolls++;
         }
-        const SUPPORT = new Set(['etendard', 'marque', 'idole']);
+        const SUPPORT = new Set(['etendard', 'marque', 'idole', 'condensateur']);
         let bought = true;
         while (bought) {
           bought = false;

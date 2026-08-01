@@ -12,7 +12,10 @@ export interface ClassDef {
   startingTowers: string[]; // defIds placés en réserve au départ
   extraShopSlots: number;
   extraHealPerCombat: number;
+  extraDeploy: number;
 }
+
+export const ALL_CLASS_IDS: ClassId[] = ['ironclad', 'silent', 'defect'];
 
 export const CLASSES: Record<ClassId, ClassDef> = {
   ironclad: {
@@ -27,6 +30,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     startingTowers: ['frappe', 'frappe', 'tourbillon'],
     extraShopSlots: 0,
     extraHealPerCombat: 5,
+    extraDeploy: 0,
   },
   silent: {
     id: 'silent',
@@ -40,5 +44,20 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     startingTowers: ['dague', 'dague', 'fiole'],
     extraShopSlots: 1,
     extraHealPerCombat: 0,
+    extraDeploy: 0,
+  },
+  defect: {
+    id: 'defect',
+    name: 'Le Defect',
+    title: 'L’automate éveillé',
+    color: '#5fb7d4',
+    glyph: '⚡',
+    desc: 'Orbes et machines : foudre en chaîne, givre, rayons perçants et surcadençage.',
+    passiveName: 'Focalisation',
+    passiveDesc: 'Peut déployer en permanence 1 tour de plus que les autres classes.',
+    startingTowers: ['orbe_foudre', 'orbe_foudre', 'orbe_givre'],
+    extraShopSlots: 0,
+    extraHealPerCombat: 0,
+    extraDeploy: 1,
   },
 };

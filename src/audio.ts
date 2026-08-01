@@ -3,7 +3,7 @@
 
 export type SfxName =
   | 'shoot' | 'pulse' | 'death' | 'heartHit' | 'waveStart' | 'waveClear'
-  | 'buy' | 'sell' | 'place' | 'reroll' | 'augment' | 'victory' | 'defeat' | 'lock';
+  | 'buy' | 'sell' | 'place' | 'reroll' | 'augment' | 'victory' | 'defeat' | 'lock' | 'zap';
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
@@ -14,7 +14,7 @@ try {
 
 const lastPlayed: Partial<Record<SfxName, number>> = {};
 const THROTTLE_MS: Partial<Record<SfxName, number>> = {
-  shoot: 50, pulse: 90, death: 70, place: 30,
+  shoot: 50, pulse: 90, death: 70, place: 30, zap: 65,
 };
 
 function ensureCtx(): AudioContext | null {
@@ -77,6 +77,7 @@ export function playSfx(name: SfxName): void {
   try {
     switch (name) {
       case 'shoot': tone(760, 500, 0.055, 'square', 0.09); break;
+      case 'zap': tone(1250, 320, 0.07, 'sawtooth', 0.08); break;
       case 'pulse': tone(230, 150, 0.09, 'sawtooth', 0.08); break;
       case 'death': tone(430, 130, 0.13, 'triangle', 0.16); break;
       case 'heartHit':

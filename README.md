@@ -6,7 +6,9 @@ Teamfight Tactics (boutique aléatoire, reroll, intérêts, plateau limité).
 
 Jeu navigateur, 100 % TypeScript + Canvas 2D, zéro framework de jeu.
 
-## Lancer le jeu
+**➡️ Jouer en ligne : https://michaeldco.github.io/TDSTS/**
+
+## Lancer le jeu en local
 
 ```bash
 npm install
@@ -39,9 +41,11 @@ Puis ouvrir http://localhost:5173
 |---|---|---|
 | 🛡️ **Ironclad** | Dégâts bruts, saignement, feu, zones | Sang Brûlant : +8 PV au Cœur après chaque combat |
 | 🐍 **La Silencieuse** | Poison cumulable, dagues, ralentissements, crits | Anneau du Serpent : 6 tours en boutique au lieu de 5 |
+| ⚡ **Le Defect** | Orbes : foudre en chaîne, givre, rayons hitscan, auras de cadence | Focalisation : +1 tour déployable en permanence |
 
 La Silencieuse est volontairement plus technique (comme dans StS) : ses poisons
-demandent d'anticiper, ses ralentissements de bien placer.
+demandent d'anticiper, ses ralentissements de bien placer. Le Defect récompense
+les regroupements (les éclairs rebondissent) et la croissance longue (Recalibrage).
 
 ## Contrôles
 
@@ -49,6 +53,7 @@ demandent d'anticiper, ses ralentissements de bien placer.
   (hors fissures). On peut poser des tours **pendant une vague** (esprit Blight).
 - **Clic** sur une tour posée : stats, reprendre en réserve, vendre (prix plein).
 - **Clic droit / Échap** : annuler. **Espace** : pause. **1 / 2 / 3** : vitesse de jeu.
+- **R** : relancer la boutique. **L** : verrouiller la boutique. **M** : couper le son.
 
 ## Architecture
 

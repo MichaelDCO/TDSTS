@@ -26,6 +26,7 @@ export function baseModifiers(classId: ClassId): Modifiers {
   const cls = CLASSES[classId];
   return {
     dmgMult: 1,
+    dmgMultByClass: {},
     flatDmgByClass: {},
     atkSpeedMult: 1,
     atkSpeedByClass: {},
@@ -50,6 +51,7 @@ export function baseModifiers(classId: ClassId): Modifiers {
     poisonNoDecay: false,
     poisonExplode: false,
     slowBonus: 0,
+    slowedAmpTaken: 0,
     dmgPerWaveCleared: 0,
     crossClassShop: false,
     flags: new Set<string>(),
@@ -90,6 +92,8 @@ export function addTower(run: RunState, defId: string): TowerInst {
     cooldown: 0,
     kills: 0,
     buffMult: 1,
+    speedBuff: 1,
+    permDmg: 0,
   };
   run.towers.push(t);
   return t;
@@ -106,7 +110,7 @@ export function interestFor(run: RunState): number {
 export const MAX_DEPLOY_BONUS = 4;
 
 export function deployCapFor(run: RunState): number {
-  return deployCap(run.combatIndex) + run.deployBonus;
+  return deployCap(run.combatIndex) + run.deployBonus + CLASSES[run.classId].extraDeploy;
 }
 
 export function deploySlotCost(run: RunState): number {
@@ -147,13 +151,14 @@ export function towerEffStats(run: RunState, t: TowerInst): EffStats {
   const m = run.mods;
   const cls = def.classId;
 
-  let dmg = def.damage + (m.flatDmgByClass[cls] ?? 0);
-  let mult = m.dmgMult + m.dmgPerWaveCleared * run.stats.wavesCleared;
+  let dmg = def.damage + (m.flatDmgByClass[cls] ?? 0) + (t.permDmg ?? 0);
+  let mult = m.dmgMult + (m.dmgMultByClass[cls] ?? 0) + m.dmgPerWaveCleared * run.stats.wavesCleared;
   mult *= t.buffMult;
   dmg *= mult;
 
   let atkSpeed = m.atkSpeedMult + (m.atkSpeedByClass[cls] ?? 0);
   if (run.heartHp < heartMax(run) / 2) atkSpeed += m.atkSpeedBelowHalf;
+  atkSpeed *= t.speedBuff ?? 1;
   const cooldown = def.cooldown / Math.max(0.2, atkSpeed);
 
   let range = def.range * m.rangeMult;

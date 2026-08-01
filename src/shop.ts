@@ -1,4 +1,5 @@
 import { BENCH_CAP, COLS, ROWS, SHOP_ODDS, keyOf } from './const';
+import { ALL_CLASS_IDS } from './data/classes';
 import { TOWERS, towersOfClass } from './data/towers';
 import { addTower, benchTowers, deployCapFor, placedTowers } from './state';
 import type { Game, Rarity, TowerDef, Vec } from './types';
@@ -7,8 +8,9 @@ function shopPool(g: Game): TowerDef[] {
   const run = g.run!;
   let pool = [...towersOfClass(run.classId), ...towersOfClass('neutral')];
   if (run.mods.crossClassShop) {
-    const other = run.classId === 'ironclad' ? 'silent' : 'ironclad';
-    pool = pool.concat(towersOfClass(other));
+    for (const cid of ALL_CLASS_IDS) {
+      if (cid !== run.classId) pool = pool.concat(towersOfClass(cid));
+    }
   }
   return pool;
 }

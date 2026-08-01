@@ -164,6 +164,48 @@ export const AUGMENTS: Record<string, AugmentDef> = {
     desc: 'Tous vos ralentissements sont 12 % plus puissants.',
     apply: (_r, m) => { m.slowBonus += 0.12; },
   },
+
+  // ---------- LE DEFECT ----------
+  surcharge: {
+    id: 'surcharge', name: 'Surcharge', glyph: '⚡', classId: 'defect', rarity: 'common', stackable: true,
+    desc: 'Les tours du Defect infligent +12 % de dégâts.',
+    apply: (_r, m) => { m.dmgMultByClass.defect = (m.dmgMultByClass.defect ?? 0) + 0.12; },
+  },
+  condensat: {
+    id: 'condensat', name: 'Composants Améliorés', glyph: '🔧', classId: 'defect', rarity: 'common', stackable: true,
+    desc: 'Les tours du Defect gagnent +3 dégâts fixes par attaque.',
+    apply: (_r, m) => { m.flatDmgByClass.defect = (m.flatDmgByClass.defect ?? 0) + 3; },
+  },
+  turbo: {
+    id: 'turbo', name: 'Surcadençage', glyph: '⏩', classId: 'defect', rarity: 'common',
+    desc: 'Les tours du Defect gagnent +15 % de vitesse d’attaque.',
+    apply: (_r, m) => { m.atkSpeedByClass.defect = (m.atkSpeedByClass.defect ?? 0) + 0.15; },
+  },
+  givre_noir: {
+    id: 'givre_noir', name: 'Givre Mordant', glyph: '🧊', classId: 'defect', rarity: 'common',
+    desc: 'Les ennemis ralentis subissent +12 % de dégâts de toutes les sources.',
+    apply: (_r, m) => { m.slowedAmpTaken += 0.12; },
+  },
+  eclats_statiques: {
+    id: 'eclats_statiques', name: 'Éclats Statiques', glyph: '✨', classId: 'defect', rarity: 'common',
+    desc: 'Les tours du Defect gagnent +15 % de chance de critique.',
+    apply: (_r, m) => { m.critChanceByClass.defect = (m.critChanceByClass.defect ?? 0) + 0.15; },
+  },
+  conductivite: {
+    id: 'conductivite', name: 'Conductivité', glyph: '🔌', classId: 'defect', rarity: 'rare',
+    desc: 'Les rebonds d’éclair ne perdent plus de puissance.',
+    apply: (_r, m) => { m.flags.add('chain_full'); },
+  },
+  double_orbe: {
+    id: 'double_orbe', name: 'Double Orbe', glyph: '🔵', classId: 'defect', rarity: 'rare',
+    desc: 'Les éclairs de vos Orbes de Foudre font un rebond supplémentaire.',
+    apply: (_r, m) => { m.flags.add('chain_extra'); },
+  },
+  recalibrage: {
+    id: 'recalibrage', name: 'Recalibrage', glyph: '📈', classId: 'defect', rarity: 'rare',
+    desc: 'À chaque fin de vague, votre tour du Defect avec le plus d’éliminations gagne +1 dégât permanent.',
+    apply: (_r, m) => { m.flags.add('recalibrage'); },
+  },
 };
 
 export function augmentsForClass(classId: string, crossClass = false): AugmentDef[] {

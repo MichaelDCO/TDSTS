@@ -1,6 +1,6 @@
 // ---------- Types partagés ----------
 
-export type ClassId = 'ironclad' | 'silent';
+export type ClassId = 'ironclad' | 'silent' | 'defect';
 export type TowerClass = ClassId | 'neutral';
 export type Rarity = 'common' | 'uncommon' | 'rare';
 export type AugRarity = 'common' | 'rare';
@@ -23,7 +23,7 @@ export interface RNG {
 
 // ---------- Tours ----------
 
-export type TowerKind = 'projectile' | 'pulse' | 'aura';
+export type TowerKind = 'projectile' | 'pulse' | 'aura' | 'beam';
 
 export interface TowerDef {
   id: string;
@@ -52,7 +52,10 @@ export interface TowerDef {
   mark?: { amp: number; duration: number };
   // auras (kind aura)
   auraBuffDmg?: number; // +% dégâts des tours alliées à portée
+  auraBuffSpeed?: number; // +% vitesse d'attaque des tours alliées à portée
   goldAura?: number; // +or par élimination à portée
+  // foudre en chaîne (Defect)
+  chain?: { jumps: number; range: number; decay: number };
 }
 
 export interface TowerInst {
@@ -62,7 +65,9 @@ export interface TowerInst {
   cell: Vec | null;
   cooldown: number;
   kills: number;
-  buffMult: number; // bonus d'aura (étendard), recalculé en continu
+  buffMult: number; // bonus d'aura de dégâts (étendard), recalculé en continu
+  speedBuff: number; // bonus d'aura de cadence (condensateur), recalculé en continu
+  permDmg: number; // dégâts permanents acquis (Recalibrage)
 }
 
 // ---------- Ennemis ----------
@@ -135,6 +140,9 @@ export interface Projectile {
   effects: HitEffects;
   color: string;
   size: number;
+  chain?: { jumps: number; range: number; decay: number };
+  hitUids?: number[]; // ennemis déjà touchés par cette chaîne d'éclairs
+  sourceUid?: number; // tour d'origine (attribution des éliminations)
 }
 
 export interface Particle {
@@ -206,6 +214,7 @@ export interface WaveDef {
 
 export interface Modifiers {
   dmgMult: number;
+  dmgMultByClass: Record<string, number>;
   flatDmgByClass: Record<string, number>;
   atkSpeedMult: number;
   atkSpeedByClass: Record<string, number>;
@@ -230,6 +239,7 @@ export interface Modifiers {
   poisonNoDecay: boolean;
   poisonExplode: boolean;
   slowBonus: number;
+  slowedAmpTaken: number; // les ennemis ralentis subissent +% de dégâts
   dmgPerWaveCleared: number;
   crossClassShop: boolean;
   flags: Set<string>;

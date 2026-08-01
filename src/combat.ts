@@ -195,6 +195,7 @@ export function damageEnemy(g: Game, e: EnemyInst, raw: number, opts: DmgOpts = 
   }
   if (e.mark) dmg *= 1 + e.mark.amp;
   if (e.bleed && m.bleedAmpTaken > 0) dmg *= 1 + m.bleedAmpTaken;
+  if (e.slows.length > 0 && m.slowedAmpTaken > 0) dmg *= 1 + m.slowedAmpTaken;
   e.hp -= dmg;
   g.run!.stats.dmgDealt += dmg;
   if (!opts.quiet && !opts.isDot) {
@@ -234,11 +235,15 @@ function applyHitEffects(g: Game, e: EnemyInst, fx: HitEffects): void {
   }
 }
 
-function killEnemy(g: Game, e: EnemyInst): void {
+function killEnemy(g: Game, e: EnemyInst, creditUid?: number): void {
   const c = g.combat!;
   const run = g.run!;
   e.alive = false;
   run.stats.kills++;
+  if (creditUid != null) {
+    const t = run.towers.find((x) => x.uid === creditUid);
+    if (t) t.kills++;
+  }
 
   // or : prime + augments + idoles à portée — plafonné par vague (anti-inflation)
   let gold = e.bounty + run.mods.goldPerKill;
@@ -396,13 +401,16 @@ function recomputeAuras(g: Game): void {
   const run = g.run!;
   const towers = placedTowers(run);
   const banners = towers.filter((t) => TOWERS[t.defId].auraBuffDmg);
+  const speeders = towers.filter((t) => TOWERS[t.defId].auraBuffSpeed);
   for (const t of towers) {
     const def = TOWERS[t.defId];
     if (def.kind === 'aura') {
       t.buffMult = 1;
+      t.speedBuff = 1;
       continue;
     }
     let buff = 0;
+    let spd = 0;
     const tc = towerCenter(t);
     for (const b of banners) {
       const bDef = TOWERS[b.defId];
@@ -410,7 +418,14 @@ function recomputeAuras(g: Game): void {
       const range = bDef.range * run.mods.rangeMult;
       if (Math.hypot(tc.x - bc.x, tc.y - bc.y) <= range) buff += bDef.auraBuffDmg!;
     }
+    for (const b of speeders) {
+      const bDef = TOWERS[b.defId];
+      const bc = towerCenter(b);
+      const range = bDef.range * run.mods.rangeMult;
+      if (Math.hypot(tc.x - bc.x, tc.y - bc.y) <= range) spd += bDef.auraBuffSpeed!;
+    }
     t.buffMult = 1 + Math.min(0.5, buff);
+    t.speedBuff = 1 + Math.min(0.3, spd);
   }
 }
 
@@ -450,6 +465,15 @@ function fireProjectile(g: Game, t: TowerInst, target: EnemyInst, dmg: number, c
   const c = g.combat!;
   const def = TOWERS[t.defId];
   const tc = towerCenter(t);
+  const m = g.run!.mods;
+  let chain: { jumps: number; range: number; decay: number } | undefined;
+  if (def.chain) {
+    chain = {
+      jumps: def.chain.jumps + (m.flags.has('chain_extra') ? 1 : 0),
+      range: def.chain.range,
+      decay: m.flags.has('chain_full') ? 1 : def.chain.decay,
+    };
+  }
   c.projectiles.push({
     x: tc.x,
     y: tc.y - 10,
@@ -460,8 +484,12 @@ function fireProjectile(g: Game, t: TowerInst, target: EnemyInst, dmg: number, c
     crit,
     splash: def.splash ?? 0,
     effects: snapshotEffects(g, t.defId),
-    color: def.classId === 'ironclad' ? '#ff9d6b' : def.classId === 'silent' ? '#8de08a' : '#8fd8ff',
+    color: def.classId === 'ironclad' ? '#ff9d6b' : def.classId === 'silent' ? '#8de08a'
+      : def.classId === 'defect' ? '#9be3ff' : '#8fd8ff',
     size: def.splash ? 5 : 3,
+    chain,
+    hitUids: chain ? [] : undefined,
+    sourceUid: t.uid,
   });
   target.incoming += dmg;
 }
@@ -477,6 +505,32 @@ function updateTowers(g: Game, dt: number): void {
     if (t.cooldown > 0) continue;
     const stats = towerEffStats(run, t);
     const tc = towerCenter(t);
+
+    if (def.kind === 'beam') {
+      const targets = pickTargets(c, tc, stats.range, 1, true);
+      if (!targets.length) {
+        t.cooldown = 0;
+        continue;
+      }
+      const e = targets[0];
+      const crit = Math.random() < stats.critChance;
+      damageEnemy(g, e, crit ? stats.damage * run.mods.critDamage : stats.damage,
+        { pierce: run.mods.armorPierce, crit });
+      applyHitEffects(g, e, snapshotEffects(g, t.defId));
+      // visuel : pointillés lumineux le long du rayon
+      const steps = 6;
+      for (let k = 1; k <= steps; k++) {
+        c.particles.push({
+          x: tc.x + ((e.pos.x - tc.x) * k) / steps,
+          y: tc.y - 10 + ((e.pos.y - tc.y + 10) * k) / steps,
+          vx: 0, vy: 0, t: 0, life: 0.14, color: '#ffe9a8', size: 2.2,
+        });
+      }
+      playSfx('zap');
+      if (e.hp <= 0 && e.alive) killEnemy(g, e, t.uid);
+      t.cooldown += stats.cooldown;
+      continue;
+    }
 
     if (def.kind === 'pulse') {
       const targets = pickTargets(c, tc, stats.range, 999);
@@ -495,7 +549,7 @@ function updateTowers(g: Game, dt: number): void {
         }
         if (def.mark) e.mark = { amp: def.mark.amp, t: def.mark.duration };
         applyHitEffects(g, e, fx);
-        if (e.hp <= 0 && e.alive) killEnemy(g, e);
+        if (e.hp <= 0 && e.alive) killEnemy(g, e, t.uid);
       }
       c.particles.push({
         x: tc.x, y: tc.y, vx: 0, vy: 0, t: 0, life: 0.35,
@@ -560,7 +614,36 @@ function updateProjectiles(g: Game, dt: number): void {
       for (const e of victims) {
         damageEnemy(g, e, p.damage, { pierce: p.effects.armorPierce, ignoreArmor: p.effects.ignoreArmor, crit: p.crit });
         applyHitEffects(g, e, p.effects);
-        if (e.hp <= 0 && e.alive) killEnemy(g, e);
+        if (e.hp <= 0 && e.alive) killEnemy(g, e, p.sourceUid);
+      }
+      // foudre en chaîne : rebondit vers l'ennemi valide le plus proche
+      if (p.chain && p.chain.jumps > 0 && target) {
+        const hit = p.hitUids ?? [];
+        hit.push(target.uid);
+        let best: EnemyInst | null = null;
+        let bestD = Infinity;
+        for (const e of c.enemies) {
+          if (!e.alive || hit.includes(e.uid)) continue;
+          const d2 = Math.hypot(e.pos.x - impact.x, e.pos.y - impact.y);
+          if (d2 <= p.chain.range && d2 < bestD) {
+            bestD = d2;
+            best = e;
+          }
+        }
+        if (best) {
+          const dmg2 = p.damage * p.chain.decay;
+          c.projectiles.push({
+            x: impact.x, y: impact.y, speed: 640, targetUid: best.uid, lastPos: { ...best.pos },
+            damage: dmg2, crit: false, splash: 0,
+            effects: { armorPierce: p.effects.armorPierce, ignoreArmor: p.effects.ignoreArmor },
+            color: '#9be3ff', size: 2.5,
+            chain: { jumps: p.chain.jumps - 1, range: p.chain.range, decay: p.chain.decay },
+            hitUids: hit,
+            sourceUid: p.sourceUid,
+          });
+          best.incoming += dmg2;
+          playSfx('zap');
+        }
       }
       for (let k = 0; k < 3; k++) {
         const a = Math.random() * Math.PI * 2;
@@ -632,6 +715,20 @@ export function updateCombat(g: Game, dt: number): void {
     run.stats.goldEarned += bonus + interest;
     run.stats.wavesCleared++;
     c.waveIndex++;
+    // Recalibrage : la tour Defect la plus meurtrière gagne +1 dégât permanent
+    if (run.mods.flags.has('recalibrage')) {
+      let best: TowerInst | null = null;
+      for (const t of placedTowers(run)) {
+        if (TOWERS[t.defId].classId !== 'defect') continue;
+        if (!best || t.kills > best.kills) best = t;
+      }
+      if (best && best.kills > 0) {
+        best.permDmg += 1;
+        if (best.cell) {
+          addFloater(c, (best.cell.x + 0.5) * CELL, (best.cell.y + 0.5) * CELL - 20, '+1 ⚔', '#9be3ff', 1);
+        }
+      }
+    }
     g.events.push({ type: 'waveCleared', gold: bonus, interest });
     playSfx('waveClear');
     if (c.waveIndex >= c.waves.length) {
