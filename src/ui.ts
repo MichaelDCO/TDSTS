@@ -187,12 +187,47 @@ function renderMenu(): void {
         <li>⌨️ Raccourcis : <b>Espace</b> pause • <b>1/2/3</b> vitesse • <b>R</b> relancer • <b>L</b> verrouiller • <b>M</b> muet</li>
       </ul>
     </div>
-    <button class="btn primary big" id="btn-play">⚔️ Nouvelle run</button>
+    <div class="btn-row">
+      <button class="btn primary big" id="btn-play">⚔️ Nouvelle run</button>
+      <button class="btn big" id="btn-bestiary">📖 Bestiaire</button>
+    </div>
   `, 'menu-modal');
   m.querySelector('#btn-play')!.addEventListener('click', () => {
     g.screen = 'class';
     showScreen();
   });
+  m.querySelector('#btn-bestiary')!.addEventListener('click', renderBestiary);
+}
+
+/** Compendium des ennemis : stats de base (combat 1) et comportements. */
+function renderBestiary(): void {
+  const groups: { title: string; kind: string }[] = [
+    { title: 'Créatures', kind: 'normal' },
+    { title: 'Élites', kind: 'elite' },
+    { title: 'Boss', kind: 'boss' },
+  ];
+  const sections = groups.map(({ title, kind }) => {
+    const rows = Object.values(ENEMIES)
+      .filter((e) => e.kind === kind)
+      .map((e) => `
+        <div class="bst-card ${kind}">
+          <span class="bst-dot" style="background:${e.color}"></span>
+          <div class="bst-body">
+            <div class="bst-name">${e.name}</div>
+            <div class="bst-stats">❤️${e.hp} • 👟${e.speed} • ${e.armor > 0 ? `🛡️${e.armor} • ` : ''}💰${e.bounty} • 💔${e.heartDmg}</div>
+            ${e.desc ? `<div class="bst-desc">${e.desc}</div>` : ''}
+          </div>
+        </div>`)
+      .join('');
+    return `<h3 class="bst-title">${title}</h3><div class="bst-grid">${rows}</div>`;
+  }).join('');
+  const m = modal(`
+    <h1>📖 Bestiaire de la Flèche</h1>
+    <p class="subtitle">PV de base au combat 1 — ils grimpent à chaque combat et chaque vague</p>
+    <div class="bst-wrap">${sections}</div>
+    <button class="btn big" id="btn-bst-back">↩️ Retour</button>
+  `, 'bestiary-modal');
+  m.querySelector('#btn-bst-back')!.addEventListener('click', renderMenu);
 }
 
 function renderClassSelect(): void {
