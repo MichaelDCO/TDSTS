@@ -15,7 +15,7 @@ export function createGame(): Game {
     screen: 'menu',
     run: null,
     combat: null,
-    ui: { selectedBench: null, selectedTower: null, hoverCell: null, hoverTower: null },
+    ui: { selectedBench: null, selectedTower: null, hoverCell: null, hoverTower: null, pendingCell: null },
     speed: 1,
     paused: false,
     events: [],
@@ -59,8 +59,8 @@ export function baseModifiers(classId: ClassId): Modifiers {
   };
 }
 
-export function newRun(g: Game, classId: ClassId, ascension = 0): void {
-  const seed = (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0;
+export function newRun(g: Game, classId: ClassId, ascension = 0, seedOverride?: number): void {
+  const seed = seedOverride !== undefined ? (seedOverride >>> 0) : (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0;
   const run: RunState = {
     classId,
     seed,
@@ -98,6 +98,7 @@ export function addTower(run: RunState, defId: string): TowerInst {
     speedBuff: 1,
     permDmg: 0,
     combatDmg: 0,
+    level: 1,
   };
   run.towers.push(t);
   return t;
@@ -113,12 +114,19 @@ export const ASCENSION_DESCS = [
   'Les ennemis ont +10 % de PV',
   'L’or d’éliminations par vague est réduit',
   'Le Cœur perd 10 PV max',
-  'Les ennemis sont 10 % plus rapides',
-  'Les ennemis ont +20 % de PV supplémentaires',
+  'Les ennemis sont 15 % plus rapides',
+  'Les ennemis ont +30 % de PV supplémentaires',
 ];
 
 export function interestFor(run: RunState): number {
   return Math.min(Math.floor(run.gold / 10), run.mods.interestCap);
+}
+
+export const MAX_TOWER_LEVEL = 3;
+
+/** Coût de l'amélioration au niveau suivant (progressif : ×3 puis ×5 du prix de base). */
+export function upgradeCost(t: TowerInst): number {
+  return TOWERS[t.defId].cost * (t.level === 1 ? 3 : 5);
 }
 
 export const MAX_DEPLOY_BONUS = 4;
@@ -165,14 +173,17 @@ export function towerEffStats(run: RunState, t: TowerInst): EffStats {
   const m = run.mods;
   const cls = def.classId;
 
+  const lvl = t.level ?? 1;
   let dmg = def.damage + (m.flatDmgByClass[cls] ?? 0) + (t.permDmg ?? 0);
   let mult = m.dmgMult + (m.dmgMultByClass[cls] ?? 0) + m.dmgPerWaveCleared * run.stats.wavesCleared;
   mult *= t.buffMult;
+  mult *= Math.pow(1.3, lvl - 1); // niveaux d'amélioration ⭐
   dmg *= mult;
 
   let atkSpeed = m.atkSpeedMult + (m.atkSpeedByClass[cls] ?? 0);
   if (run.heartHp < heartMax(run) / 2) atkSpeed += m.atkSpeedBelowHalf;
   atkSpeed *= t.speedBuff ?? 1;
+  atkSpeed *= Math.pow(1.05, lvl - 1);
   const cooldown = def.cooldown / Math.max(0.2, atkSpeed);
 
   let range = def.range * m.rangeMult;

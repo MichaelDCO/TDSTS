@@ -58,6 +58,22 @@ export function render(g: Game, ctx: CanvasRenderingContext2D): void {
       ctx.restore();
     }
     drawTower(ctx, pos.x, pos.y, def.glyph, CLASS_COLORS[def.classId], RARITY_COLORS[def.rarity], selected, t.buffMult > 1);
+    // niveaux d'amélioration : petites étoiles dorées sous le socle
+    if (t.level > 1) {
+      ctx.save();
+      ctx.fillStyle = '#ffd75e';
+      for (let s = 0; s < t.level - 1; s++) {
+        const sx = pos.x - 5 + s * 10;
+        const sy = pos.y + CELL * 0.34;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy - 3.5);
+        ctx.lineTo(sx + 3, sy + 2.5);
+        ctx.lineTo(sx - 3, sy + 2.5);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
   }
 
   // 5) ennemis
@@ -417,11 +433,11 @@ function drawEnemy(ctx: CanvasRenderingContext2D, e: EnemyInst, time: number): v
 
 function drawGhost(g: Game, ctx: CanvasRenderingContext2D): void {
   const run = g.run!;
-  if (g.ui.selectedBench == null || !g.ui.hoverCell) return;
+  const cell = g.ui.pendingCell ?? g.ui.hoverCell;
+  if (g.ui.selectedBench == null || !cell) return;
   const t = run.towers.find((x) => x.uid === g.ui.selectedBench);
   if (!t) return;
   const def = TOWERS[t.defId];
-  const cell = g.ui.hoverCell;
   const x = (cell.x + 0.5) * CELL;
   const y = (cell.y + 0.5) * CELL;
   const ok = cellBuildable(g, cell);
@@ -436,5 +452,16 @@ function drawGhost(g: Game, ctx: CanvasRenderingContext2D): void {
   ctx.strokeStyle = ok ? 'rgba(125,224,138,0.8)' : 'rgba(255,107,94,0.8)';
   ctx.lineWidth = 2;
   ctx.strokeRect(cell.x * CELL + 1, cell.y * CELL + 1, CELL - 2, CELL - 2);
+  // tactile : invite de confirmation du 2e tap
+  if (g.ui.pendingCell && ok) {
+    ctx.font = 'bold 12px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(125,224,138,0.95)';
+    ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+    ctx.lineWidth = 3;
+    const ty = cell.y * CELL - 8 > 12 ? cell.y * CELL - 8 : (cell.y + 1) * CELL + 16;
+    ctx.strokeText('Touchez à nouveau pour poser', x, ty);
+    ctx.fillText('Touchez à nouveau pour poser', x, ty);
+  }
   ctx.restore();
 }

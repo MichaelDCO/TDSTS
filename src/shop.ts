@@ -1,7 +1,7 @@
 import { BENCH_CAP, COLS, ROWS, SHOP_ODDS, keyOf } from './const';
 import { ALL_CLASS_IDS } from './data/classes';
 import { TOWERS, towersOfClass } from './data/towers';
-import { addTower, benchTowers, deployCapFor, placedTowers } from './state';
+import { MAX_TOWER_LEVEL, addTower, benchTowers, deployCapFor, placedTowers, upgradeCost } from './state';
 import type { Game, Rarity, TowerDef, Vec } from './types';
 
 function shopPool(g: Game): TowerDef[] {
@@ -67,10 +67,27 @@ export function sellTower(g: Game, uid: number): boolean {
   if (!g.combat || g.combat.phase !== 'prep') return false;
   const idx = run.towers.findIndex((t) => t.uid === uid);
   if (idx < 0) return false;
-  run.gold += TOWERS[run.towers[idx].defId].cost;
+  // revente : prix de base + moitié des améliorations investies
+  const t = run.towers[idx];
+  const invested = t.level >= 2 ? TOWERS[t.defId].cost * 3 : 0;
+  const invested3 = t.level >= 3 ? TOWERS[t.defId].cost * 5 : 0;
+  run.gold += TOWERS[t.defId].cost + Math.floor((invested + invested3) / 2);
   run.towers.splice(idx, 1);
   if (g.ui.selectedTower === uid) g.ui.selectedTower = null;
   if (g.ui.selectedBench === uid) g.ui.selectedBench = null;
+  return true;
+}
+
+/** Améliore une tour d'un niveau (⭐, préparation uniquement, max 3). */
+export function upgradeTower(g: Game, uid: number): boolean {
+  const run = g.run!;
+  if (!g.combat || g.combat.phase !== 'prep') return false;
+  const t = run.towers.find((x) => x.uid === uid);
+  if (!t || t.level >= MAX_TOWER_LEVEL) return false;
+  const cost = upgradeCost(t);
+  if (run.gold < cost) return false;
+  run.gold -= cost;
+  t.level++;
   return true;
 }
 

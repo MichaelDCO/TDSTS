@@ -618,6 +618,39 @@ canvas#game {
   color: #ffb26b;
 }
 
+/* graine */
+.seed-row {
+  margin-top: 14px;
+}
+
+.seed-row input {
+  width: min(420px, 90%);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  text-align: center;
+}
+
+.seed-row input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.seed-line {
+  color: var(--dim);
+  font-size: 12.5px;
+  margin-top: 10px;
+}
+
+.seed-line b {
+  color: var(--gold);
+  user-select: all;
+}
+
 /* choix de classe */
 .class-row {
   display: flex;
@@ -802,4 +835,15 @@ canvas#game {
   margin: 6px 0 2px;
   color: var(--gold);
   font-size: 12px;
+}
+
+.pop-stars {
+  text-align: center;
+  font-size: 13px;
+  letter-spacing: 2px;
+  margin-bottom: 2px;
+}
+
+#tower-popover .btn-row {
+  margin-top: 8px;
 }

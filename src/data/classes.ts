@@ -70,7 +70,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     title: 'La moniale aux yeux ouverts',
     color: '#b48ad9',
     glyph: '👁️',
-    desc: 'Postures : ses tours alternent Calme (retenue) et Colère (dégâts ×2,2). Le rythme est une arme.',
+    desc: 'Postures : ses tours alternent Calme (retenue) et Colère (dégâts ×2,1). Le rythme est une arme.',
     passiveName: 'Divination',
     passiveDesc: 'L’aperçu « En approche » révèle aussi la vague suivante.',
     startingTowers: ['paume', 'paume', 'roue'],

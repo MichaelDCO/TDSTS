@@ -154,7 +154,7 @@ function spawnEnemy(g: Game, enemyId: string, portalId: string, startDist = 0): 
   const wMult = waveHpMult(c.waveIndex + 1);
   let ascMult = 1;
   if (run.ascension >= 1) ascMult += 0.1;
-  if (run.ascension >= 5) ascMult += 0.2;
+  if (run.ascension >= 5) ascMult += 0.3;
   const hp = Math.round(def.hp * c.hpMult * wMult * ascMult);
   const e: EnemyInst = {
     uid: enemyUid++,
@@ -341,7 +341,7 @@ function maxSlow(e: EnemyInst): number {
 function updateEnemies(g: Game, dt: number): void {
   const c = g.combat!;
   const m = g.run!.mods;
-  const ascSpeed = g.run!.ascension >= 4 ? 1.1 : 1;
+  const ascSpeed = g.run!.ascension >= 4 ? 1.15 : 1;
   for (const e of c.enemies) {
     if (!e.alive) continue;
 
@@ -419,7 +419,7 @@ export function stanceOf(c: CombatState, t: TowerInst, m: Modifiers): 'calm' | '
 
 function stanceDmgMult(st: 'calm' | 'wrath' | null, m: Modifiers): number {
   if (st === 'calm') return m.flags.has('calm_strong') ? 0.85 : 0.7;
-  if (st === 'wrath') return 2.2;
+  if (st === 'wrath') return 2.1;
   return 1;
 }
 

@@ -7,11 +7,15 @@ import { CLASSES } from './data/classes';
 import { COMBAT_PLAN } from './data/combats';
 import { ENEMIES } from './data/enemies';
 import { TOWERS } from './data/towers';
-import { buyTower, pickupTower, rerollShop, sellTower } from './shop';
+import { buyTower, pickupTower, rerollShop, sellTower, upgradeTower } from './shop';
 import {
-  ASCENSION_DESCS, MAX_DEPLOY_BONUS, applyAugment, benchTowers, buyDeploySlot, deployCapFor,
-  deploySlotCost, heartMax, interestFor, newRun, pickAugmentOffers, placedTowers, towerEffStats,
+  ASCENSION_DESCS, MAX_DEPLOY_BONUS, MAX_TOWER_LEVEL, applyAugment, benchTowers, buyDeploySlot,
+  deployCapFor, deploySlotCost, heartMax, interestFor, newRun, pickAugmentOffers, placedTowers,
+  towerEffStats, upgradeCost,
 } from './state';
+
+// Écran tactile : pas de tooltips au survol (elles resteraient collées)
+const IS_COARSE = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
 import type { AugmentDef, ClassId, Game, TowerDef, TowerInst } from './types';
 
 // ---------- Références DOM ----------
@@ -115,9 +119,20 @@ export function maxAscension(): number {
 }
 
 let chosenAscension = -1; // -1 = pas encore initialisé (défaut : max débloqué)
+let pendingSeed: number | null = null; // graine préremplie (« Rejouer la graine »)
 
 export function setAscension(n: number): void {
   chosenAscension = Math.max(0, Math.min(maxAscension(), n));
+}
+
+/** Convertit l'entrée graine (nombre ou texte) en seed 32 bits, ou undefined si vide. */
+function parseSeed(txt: string): number | undefined {
+  const s = txt.trim();
+  if (!s) return undefined;
+  if (/^\d+$/.test(s)) return Number(s) >>> 0;
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return h;
 }
 
 function loadRecords(): RunRecord[] {
@@ -207,17 +222,25 @@ function renderClassSelect(): void {
         <button class="btn primary">Choisir</button>
       </div>`;
   }).join('');
-  const m = modal(`<h1>Choisissez votre champion</h1>${ascHtml}<div class="class-row">${cards}</div>`, 'class-modal');
+  const seedHtml = `<div class="seed-row">
+    <input id="seed-input" type="text" placeholder="🌱 Graine (optionnel — même graine, même run)"
+      value="${pendingSeed !== null ? pendingSeed : ''}" spellcheck="false">
+  </div>`;
+  const m = modal(`<h1>Choisissez votre champion</h1>${ascHtml}<div class="class-row">${cards}</div>${seedHtml}`, 'class-modal');
   m.querySelectorAll<HTMLButtonElement>('.asc-row button').forEach((b) => {
     b.addEventListener('click', () => {
       chosenAscension = Number(b.dataset.asc);
+      const keep = (m.querySelector('#seed-input') as HTMLInputElement | null)?.value ?? '';
+      pendingSeed = parseSeed(keep) ?? null;
       renderClassSelect();
     });
   });
   m.querySelectorAll<HTMLElement>('.class-card').forEach((el) => {
     el.querySelector('button')!.addEventListener('click', () => {
       const cls = el.dataset.class as ClassId;
-      newRun(g, cls, Math.max(0, chosenAscension));
+      const seedTxt = (m.querySelector('#seed-input') as HTMLInputElement | null)?.value ?? '';
+      pendingSeed = null;
+      newRun(g, cls, Math.max(0, chosenAscension), parseSeed(seedTxt));
       setupCombat(g);
       g.screen = 'combat';
       showScreen();
@@ -346,12 +369,19 @@ function renderEndScreen(victory: boolean): void {
       <div><b>${run.towers.length}</b><span>tours possédées</span></div>
       <div><b>${run.augments.length}</b><span>augments choisis</span></div>
     </div>
+    <p class="seed-line">🌱 Graine de la run : <b>${run.seed}</b></p>
     <div class="btn-row">
       <button class="btn primary big" id="btn-again">⚔️ Nouvelle run</button>
+      <button class="btn big" id="btn-replay-seed" title="Même boutique, mêmes vagues, mêmes augments">🌱 Rejouer la graine</button>
       <button class="btn big" id="btn-menu">Menu</button>
     </div>
   `);
   m.querySelector('#btn-again')!.addEventListener('click', () => {
+    g.screen = 'class';
+    showScreen();
+  });
+  m.querySelector('#btn-replay-seed')!.addEventListener('click', () => {
+    pendingSeed = run.seed;
     g.screen = 'class';
     showScreen();
   });
@@ -447,6 +477,7 @@ function towerTooltipHtml(def: TowerDef, inst?: TowerInst): string {
 
 export function refreshDock(): void {
   if (!g.run || !g.combat || g.screen !== 'combat') return;
+  hideTooltip(); // les cartes se reconstruisent : jamais de tooltip orpheline
   const run = g.run;
   const c = g.combat;
   const prep = c.phase === 'prep';
@@ -475,8 +506,10 @@ export function refreshDock(): void {
         hideTooltip();
       }
     });
-    el.addEventListener('mousemove', (ev) => showTooltip(towerTooltipHtml(TOWERS[defId]), ev));
-    el.addEventListener('mouseleave', hideTooltip);
+    if (!IS_COARSE) {
+      el.addEventListener('mousemove', (ev) => showTooltip(towerTooltipHtml(TOWERS[defId]), ev));
+      el.addEventListener('mouseleave', hideTooltip);
+    }
   });
 
   const rerollBtn = $('btn-reroll') as HTMLButtonElement;
@@ -518,8 +551,10 @@ export function refreshDock(): void {
       hidePopover();
       refreshDock();
     });
-    el.addEventListener('mousemove', (ev) => showTooltip(towerTooltipHtml(TOWERS[t.defId], t), ev));
-    el.addEventListener('mouseleave', hideTooltip);
+    if (!IS_COARSE) {
+      el.addEventListener('mousemove', (ev) => showTooltip(towerTooltipHtml(TOWERS[t.defId], t), ev));
+      el.addEventListener('mouseleave', hideTooltip);
+    }
   });
 
   // panneau vague
@@ -583,18 +618,35 @@ export function showPopover(uid: number): void {
   const prep = g.combat?.phase === 'prep';
   const pop = $('tower-popover');
   pop.classList.remove('hidden');
+  const stars = '⭐'.repeat(t.level);
+  const canUp = t.level < MAX_TOWER_LEVEL;
+  const upCost = canUp ? upgradeCost(t) : 0;
+  const sellBack = def.cost + Math.floor(((t.level >= 2 ? def.cost * 3 : 0) + (t.level >= 3 ? def.cost * 5 : 0)) / 2);
   pop.innerHTML = `
+    <div class="pop-stars">${stars}</div>
     ${towerTooltipHtml(def, t)}
     <div class="tt-kills">☠️ ${t.kills} éliminations${t.buffMult > 1 ? ` • 🚩 +${Math.round((t.buffMult - 1) * 100)} % dégâts` : ''}</div>
     <div class="btn-row">
+      <button class="btn small primary" id="pop-upgrade" ${prep && canUp && run.gold >= upCost ? '' : 'disabled'}>
+        ${canUp ? `⭐ Améliorer (${upCost} or)` : '⭐ Niveau max'}</button>
+    </div>
+    <div class="btn-row">
       <button class="btn small" id="pop-pickup" ${prep ? '' : 'disabled'}>↩️ Reprendre</button>
-      <button class="btn small danger" id="pop-sell" ${prep ? '' : 'disabled'}>💰 Vendre (+${def.cost})</button>
+      <button class="btn small danger" id="pop-sell" ${prep ? '' : 'disabled'}>💰 Vendre (+${sellBack})</button>
     </div>`;
   const scale = canvas.clientWidth / canvas.width;
   const px = (t.cell.x + 1) * CELL * scale + 8;
   const py = t.cell.y * CELL * scale;
   pop.style.left = `${Math.min(px, canvas.clientWidth - 240)}px`;
   pop.style.top = `${Math.min(py, canvas.clientHeight - 220)}px`;
+  pop.querySelector('#pop-upgrade')!.addEventListener('click', () => {
+    if (upgradeTower(g, uid)) {
+      playSfx('buy');
+      showPopover(uid); // rafraîchit stats et étoiles
+      refreshDock();
+      updateHUD();
+    }
+  });
   pop.querySelector('#pop-pickup')!.addEventListener('click', () => {
     if (pickupTower(g, uid)) {
       hidePopover();

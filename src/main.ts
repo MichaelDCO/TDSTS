@@ -3,7 +3,7 @@ import { playSfx, toggleMute } from './audio';
 import { CELL } from './const';
 import { setupCombat, startWave, updateCombat } from './combat';
 import { render } from './render';
-import { buyTower, placeTower, rerollShop, sellTower } from './shop';
+import { buyTower, cellBuildable, placeTower, rerollShop, sellTower, upgradeTower } from './shop';
 import {
   applyAugment, benchTowers, buyDeploySlot, createGame, heartMax, pickAugmentOffers,
   placedTowers, towerEffStats,
@@ -18,6 +18,22 @@ const canvas = document.getElementById('game') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 const g = createGame();
 initUI(g, canvas);
+
+// Tactile : placement en deux taps (fantôme puis confirmation) + aimantation
+const IS_COARSE = window.matchMedia('(pointer: coarse)').matches;
+
+/** La case la plus proche constructible (tolérance gros doigts : la case ou ses voisines). */
+function nearestBuildable(cell: Vec): Vec | null {
+  const OFFSETS = [
+    [0, 0], [1, 0], [-1, 0], [0, 1], [0, -1],
+    [1, 1], [1, -1], [-1, 1], [-1, -1],
+  ];
+  for (const [dx, dy] of OFFSETS) {
+    const c = { x: cell.x + dx, y: cell.y + dy };
+    if (cellBuildable(g, c)) return c;
+  }
+  return null;
+}
 
 // ---------- Entrées souris / clavier ----------
 
@@ -49,13 +65,27 @@ canvas.addEventListener('mouseleave', () => {
 
 canvas.addEventListener('click', (ev) => {
   if (g.screen !== 'combat' || !g.run) return;
+  hideTooltip();
   const cell = eventCell(ev);
 
   // placement depuis la réserve
   if (g.ui.selectedBench != null) {
     const placing = g.run.towers.find((t) => t.uid === g.ui.selectedBench);
-    if (placing && placeTower(g, placing.uid, cell)) {
+    // tactile : 1er tap = fantôme aimanté, 2e tap sur la même case = confirmation
+    let target = cell;
+    if (IS_COARSE) {
+      const snapped = nearestBuildable(cell) ?? cell;
+      const pending = g.ui.pendingCell;
+      if (!pending || pending.x !== snapped.x || pending.y !== snapped.y) {
+        g.ui.pendingCell = snapped;
+        g.ui.hoverCell = snapped;
+        return;
+      }
+      target = pending;
+    }
+    if (placing && placeTower(g, placing.uid, target)) {
       playSfx('place');
+      g.ui.pendingCell = null;
       // enchaîne sur une autre tour identique de la réserve, s'il y en a
       const next = benchTowers(g.run).find((t) => t.defId === placing.defId);
       g.ui.selectedBench = next ? next.uid : null;
@@ -79,6 +109,7 @@ canvas.addEventListener('click', (ev) => {
 canvas.addEventListener('contextmenu', (ev) => {
   ev.preventDefault();
   g.ui.selectedBench = null;
+  g.ui.pendingCell = null;
   hidePopover();
   refreshDock();
 });
@@ -87,6 +118,7 @@ window.addEventListener('keydown', (ev) => {
   if (g.screen !== 'combat') return;
   if (ev.key === 'Escape') {
     g.ui.selectedBench = null;
+    g.ui.pendingCell = null;
     hidePopover();
     refreshDock();
   } else if (ev.key === ' ') {
@@ -166,6 +198,8 @@ requestAnimationFrame(frame);
   buyTower,
   sellTower,
   rerollShop,
+  upgradeTower,
+  showPopover,
   applyAugment,
   pickAugmentOffers,
   towerEffStats,

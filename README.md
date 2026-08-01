@@ -42,7 +42,7 @@ Puis ouvrir http://localhost:5173
 | 🛡️ **Ironclad** | Dégâts bruts, saignement, feu, zones | Sang Brûlant : +8 PV au Cœur après chaque combat |
 | 🐍 **La Silencieuse** | Poison cumulable, dagues, ralentissements, crits | Anneau du Serpent : 6 tours en boutique au lieu de 5 |
 | ⚡ **Le Defect** | Orbes : foudre en chaîne, givre, rayons hitscan, auras de cadence | Focalisation : +1 tour déployable en permanence |
-| 👁️ **La Watcher** | Postures : ses tours alternent Calme (retenue) et Colère (dégâts ×2,2) | Divination : l'aperçu révèle aussi la vague suivante |
+| 👁️ **La Watcher** | Postures : ses tours alternent Calme (retenue) et Colère (dégâts ×2,1) | Divination : l'aperçu révèle aussi la vague suivante |
 
 La Silencieuse est volontairement plus technique (comme dans StS) : ses poisons
 demandent d'anticiper, ses ralentissements de bien placer. Le Defect récompense

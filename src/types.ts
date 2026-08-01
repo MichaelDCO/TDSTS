@@ -71,6 +71,7 @@ export interface TowerInst {
   speedBuff: number; // bonus d'aura de cadence (condensateur), recalculé en continu
   permDmg: number; // dégâts permanents acquis (Recalibrage)
   combatDmg: number; // dégâts directs infligés durant le combat en cours (récapitulatif)
+  level: number; // niveau d'amélioration (1 à 3, +30 % dégâts et +5 % cadence par niveau)
 }
 
 // ---------- Ennemis ----------
@@ -327,6 +328,7 @@ export interface UIState {
   selectedTower: number | null; // uid de la tour posée sélectionnée
   hoverCell: Vec | null;
   hoverTower: number | null;
+  pendingCell: Vec | null; // tactile : case en attente de confirmation (2e tap)
 }
 
 export interface Game {

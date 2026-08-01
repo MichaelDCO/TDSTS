@@ -3,7 +3,7 @@
 // Joue une run complète en headless et renvoie un rapport par combat.
 import { startWave, updateCombat } from './combat';
 import { TOWERS } from './data/towers';
-import { buyTower, placeTower, rerollShop, sellTower } from './shop';
+import { buyTower, placeTower, rerollShop, sellTower, upgradeTower } from './shop';
 import { benchTowers, buyDeploySlot, placedTowers } from './state';
 import type { CombatState, Game } from './types';
 
@@ -94,6 +94,11 @@ export function installDevBot(g: Game): void {
       while (c.phase === 'prep') {
         const run = g.run;
         if (run.gold >= o.deployAt) buyDeploySlot(run);
+        // améliore la tour la plus meurtrière quand la cagnotte le permet
+        while (run.gold >= 120) {
+          const best = placedTowers(run).filter((t) => t.level < 3).sort((a, b) => b.kills - a.kills)[0];
+          if (!best || !upgradeTower(g, best.uid)) break;
+        }
         let bench = benchTowers(run);
         while (bench.length > 24) {
           const junk = bench.sort((a, b) => cost(a.defId) - cost(b.defId))[0];
