@@ -11,8 +11,8 @@ export const COMBAT_PLAN: CombatDef[] = [
     portalIds: ['W1', 'W2', 'N'], waves: 4, portalActivation: { W1: 1, W2: 2, N: 4 },
   },
   {
-    index: 3, kind: 'normal', name: 'La Ménagerie', mapId: 'spirale',
-    portalIds: ['C1', 'C3', 'C2'], waves: 5, portalActivation: { C1: 1, C3: 2, C2: 4 },
+    index: 3, kind: 'normal', name: 'La Ménagerie', mapId: 'labyrinthe',
+    portalIds: ['W', 'E', 'N'], waves: 5, portalActivation: { W: 1, E: 2, N: 4 },
   },
   {
     index: 4, kind: 'elite', name: 'ÉLITE — L’Arène du Nob', mapId: 'croisee',
@@ -31,8 +31,8 @@ export const COMBAT_PLAN: CombatDef[] = [
     portalIds: ['W', 'E', 'N1', 'S1'], waves: 6, portalActivation: { W: 1, E: 2, N1: 4, S1: 5 },
   },
   {
-    index: 8, kind: 'normal', name: 'Les Remparts', mapId: 'croisee',
-    portalIds: ['W', 'N', 'E', 'S'], waves: 6, portalActivation: { W: 1, N: 2, E: 3, S: 5 },
+    index: 8, kind: 'normal', name: 'Les Remparts', mapId: 'labyrinthe',
+    portalIds: ['W', 'E', 'N', 'S'], waves: 6, portalActivation: { W: 1, E: 2, N: 3, S: 5 },
   },
   {
     index: 9, kind: 'normal', name: 'L’Avant-Cœur', mapId: 'spirale',

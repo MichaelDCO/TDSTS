@@ -35,6 +35,17 @@ export const MAPS: Record<string, MapDef> = {
       { id: 'C4', waypoints: [{ x: 0, y: 13 }, { x: 5, y: 13 }, { x: 5, y: 9 }, { x: 9, y: 9 }, { x: 9, y: 7 }, { x: 12, y: 7 }] },
     ],
   },
+  labyrinthe: {
+    id: 'labyrinthe',
+    name: 'Le Labyrinthe d’Ossements',
+    heart: { x: 12, y: 7 },
+    portals: [
+      { id: 'W', waypoints: [{ x: 0, y: 2 }, { x: 4, y: 2 }, { x: 4, y: 10 }, { x: 8, y: 10 }, { x: 8, y: 4 }, { x: 12, y: 4 }, { x: 12, y: 7 }] },
+      { id: 'E', waypoints: [{ x: 23, y: 11 }, { x: 19, y: 11 }, { x: 19, y: 3 }, { x: 15, y: 3 }, { x: 15, y: 9 }, { x: 12, y: 9 }, { x: 12, y: 7 }] },
+      { id: 'N', waypoints: [{ x: 20, y: 0 }, { x: 20, y: 6 }, { x: 16, y: 6 }, { x: 16, y: 7 }, { x: 12, y: 7 }] },
+      { id: 'S', waypoints: [{ x: 3, y: 13 }, { x: 7, y: 13 }, { x: 7, y: 7 }, { x: 12, y: 7 }] },
+    ],
+  },
   sanctuaire: {
     id: 'sanctuaire',
     name: 'Le Sanctuaire du Cœur',

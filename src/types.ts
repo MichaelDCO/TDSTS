@@ -244,6 +244,10 @@ export interface Modifiers {
   poisonExplode: boolean;
   slowBonus: number;
   slowedAmpTaken: number; // les ennemis ralentis subissent +% de dégâts
+  eliteAmpTaken: number; // les élites et boss subissent +% de dégâts
+  splashAmp: number; // dégâts des tours à zone d'explosion +%
+  upgradeDiscount: number; // remise sur le coût des améliorations ⭐ (0..1)
+  interestDiv: number; // 1 or d'intérêt par tranche de N (10 de base)
   dmgPerWaveCleared: number;
   crossClassShop: boolean;
   augRerolls: number; // relances gratuites par écran d'augment

@@ -710,7 +710,7 @@ export function showPopover(uid: number): void {
   pop.classList.remove('hidden');
   const stars = '⭐'.repeat(t.level);
   const canUp = t.level < MAX_TOWER_LEVEL;
-  const upCost = canUp ? upgradeCost(t) : 0;
+  const upCost = canUp ? upgradeCost(run, t) : 0;
   const sellBack = def.cost + Math.floor(((t.level >= 2 ? def.cost * 3 : 0) + (t.level >= 3 ? def.cost * 5 : 0)) / 2);
   pop.innerHTML = `
     <div class="pop-stars">${stars}</div>

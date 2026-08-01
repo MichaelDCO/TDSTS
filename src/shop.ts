@@ -84,7 +84,7 @@ export function upgradeTower(g: Game, uid: number): boolean {
   if (!g.combat || g.combat.phase !== 'prep') return false;
   const t = run.towers.find((x) => x.uid === uid);
   if (!t || t.level >= MAX_TOWER_LEVEL) return false;
-  const cost = upgradeCost(t);
+  const cost = upgradeCost(run, t);
   if (run.gold < cost) return false;
   run.gold -= cost;
   t.level++;

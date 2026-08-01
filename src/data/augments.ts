@@ -77,8 +77,33 @@ export const AUGMENTS: Record<string, AugmentDef> = {
   },
   contrebande: {
     id: 'contrebande', name: 'Contrebande', glyph: '📦', classId: 'general', rarity: 'rare',
-    desc: 'La boutique peut désormais proposer les tours de l’autre classe.',
+    desc: 'La boutique peut désormais proposer les tours des autres classes.',
     apply: (_r, m) => { m.crossClassShop = true; },
+  },
+  chasseur: {
+    id: 'chasseur', name: 'Chasseur de Têtes', glyph: '🏹', classId: 'general', rarity: 'common',
+    desc: 'Les élites et les boss subissent +12 % de dégâts.',
+    apply: (_r, m) => { m.eliteAmpTaken += 0.12; },
+  },
+  ingenieur: {
+    id: 'ingenieur', name: 'Ingénieure', glyph: '🔩', classId: 'general', rarity: 'common',
+    desc: 'Améliorer une tour ⭐ coûte 25 % de moins.',
+    apply: (_r, m) => { m.upgradeDiscount = Math.min(0.5, m.upgradeDiscount + 0.25); },
+  },
+  sang_neuf: {
+    id: 'sang_neuf', name: 'Sang Neuf', glyph: '💗', classId: 'general', rarity: 'common',
+    desc: 'Le Cœur gagne +1 PV max (et récupère 1 PV) à chaque vague repoussée.',
+    apply: (_r, m) => { m.flags.add('sang_neuf'); },
+  },
+  grande_bourse: {
+    id: 'grande_bourse', name: 'Grande Bourse', glyph: '👛', classId: 'general', rarity: 'rare',
+    desc: 'Les intérêts rapportent 1 or par tranche de 8 (au lieu de 10).',
+    apply: (_r, m) => { m.interestDiv = 8; },
+  },
+  artificier: {
+    id: 'artificier', name: 'Artificière', glyph: '🧨', classId: 'general', rarity: 'rare',
+    desc: 'Les tours à explosion de zone infligent +25 % de dégâts.',
+    apply: (_r, m) => { m.splashAmp += 0.25; },
   },
 
   // ---------- IRONCLAD ----------

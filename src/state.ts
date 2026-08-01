@@ -52,6 +52,10 @@ export function baseModifiers(classId: ClassId): Modifiers {
     poisonExplode: false,
     slowBonus: 0,
     slowedAmpTaken: 0,
+    eliteAmpTaken: 0,
+    splashAmp: 0,
+    upgradeDiscount: 0,
+    interestDiv: 10,
     dmgPerWaveCleared: 0,
     crossClassShop: false,
     augRerolls: 1,
@@ -120,14 +124,15 @@ export const ASCENSION_DESCS = [
 ];
 
 export function interestFor(run: RunState): number {
-  return Math.min(Math.floor(run.gold / 10), run.mods.interestCap);
+  return Math.min(Math.floor(run.gold / run.mods.interestDiv), run.mods.interestCap);
 }
 
 export const MAX_TOWER_LEVEL = 3;
 
 /** Coût de l'amélioration au niveau suivant (progressif : ×3 puis ×5 du prix de base). */
-export function upgradeCost(t: TowerInst): number {
-  return TOWERS[t.defId].cost * (t.level === 1 ? 3 : 5);
+export function upgradeCost(run: RunState, t: TowerInst): number {
+  const base = TOWERS[t.defId].cost * (t.level === 1 ? 3 : 5);
+  return Math.max(1, Math.ceil(base * (1 - run.mods.upgradeDiscount)));
 }
 
 export const MAX_DEPLOY_BONUS = 4;

@@ -202,6 +202,7 @@ export function damageEnemy(g: Game, e: EnemyInst, raw: number, opts: DmgOpts = 
   if (e.mark) dmg *= 1 + e.mark.amp;
   if (e.bleed && m.bleedAmpTaken > 0) dmg *= 1 + m.bleedAmpTaken;
   if (e.slows.length > 0 && m.slowedAmpTaken > 0) dmg *= 1 + m.slowedAmpTaken;
+  if (e.def.kind !== 'normal' && m.eliteAmpTaken > 0) dmg *= 1 + m.eliteAmpTaken;
   e.hp -= dmg;
   g.run!.stats.dmgDealt += dmg;
   if (!opts.quiet && !opts.isDot) {
@@ -596,9 +597,10 @@ function updateTowers(g: Game, dt: number): void {
       continue;
     }
     playSfx('shoot');
+    const splashBoost = def.splash && run.mods.splashAmp > 0 ? 1 + run.mods.splashAmp : 1;
     for (const target of targets) {
       const crit = Math.random() < stats.critChance;
-      const dmg = (crit ? stats.damage * run.mods.critDamage : stats.damage) * sMult;
+      const dmg = (crit ? stats.damage * run.mods.critDamage : stats.damage) * sMult * splashBoost;
       fireProjectile(g, t, target, dmg, crit);
       if (def.id === 'frappe' && run.mods.flags.has('frappe_double')) {
         const crit2 = Math.random() < stats.critChance;
@@ -746,6 +748,11 @@ export function updateCombat(g: Game, dt: number): void {
     run.stats.goldEarned += bonus + interest;
     run.stats.wavesCleared++;
     c.waveIndex++;
+    // Sang Neuf : le Cœur se renforce à chaque vague repoussée
+    if (run.mods.flags.has('sang_neuf')) {
+      run.mods.heartMaxBonus += 1;
+      run.heartHp += 1;
+    }
     // Recalibrage : la tour Defect la plus meurtrière gagne +1 dégât permanent
     if (run.mods.flags.has('recalibrage')) {
       let best: TowerInst | null = null;
