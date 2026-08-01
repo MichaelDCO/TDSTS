@@ -19,11 +19,28 @@ export function render(g: Game, ctx: CanvasRenderingContext2D): void {
   }
   const c = g.combat;
 
-  // 1) chemins : fissures de corruption
+  // 1) chemins : fissures de corruption (couche statique hors-écran, re-tracée
+  //    seulement quand l'état des portails change — gros gain sur mobile)
+  const layerKey = c.map.id + '|' + [...c.activePortals].sort().join(',');
+  if (!pathLayer || pathLayerKey !== layerKey) {
+    if (!pathLayer) {
+      pathLayer = document.createElement('canvas');
+      pathLayer.width = W;
+      pathLayer.height = H;
+    }
+    const lctx = pathLayer.getContext('2d')!;
+    lctx.clearRect(0, 0, W, H);
+    for (const p of c.map.portals) {
+      const used = c.def.portalIds.includes(p.id);
+      const active = c.activePortals.has(p.id);
+      drawPathStatic(lctx, c.paths[p.id], active, used);
+    }
+    pathLayerKey = layerKey;
+  }
+  ctx.drawImage(pathLayer, 0, 0);
+  // flux d'ichor animé, uniquement sur les chemins actifs
   for (const p of c.map.portals) {
-    const used = c.def.portalIds.includes(p.id);
-    const active = c.activePortals.has(p.id);
-    drawPath(ctx, c.paths[p.id], active, used, c.time);
+    if (c.activePortals.has(p.id)) drawPathIchor(ctx, c.paths[p.id], c.time);
   }
 
   // 2) portails
@@ -79,11 +96,9 @@ export function render(g: Game, ctx: CanvasRenderingContext2D): void {
   // 5) ennemis
   for (const e of c.enemies) drawEnemy(ctx, e, c.time);
 
-  // 6) projectiles
+  // 6) projectiles — halo simulé par double cercle (shadowBlur trop coûteux sur mobile)
   for (const p of c.projectiles) {
     ctx.save();
-    ctx.shadowColor = p.color;
-    ctx.shadowBlur = 8;
     if (p.chain) {
       // éclair : zigzag scintillant orienté vers la cible
       const dx = p.lastPos.x - p.x;
@@ -104,7 +119,12 @@ export function render(g: Game, ctx: CanvasRenderingContext2D): void {
       }
       ctx.stroke();
     } else {
+      ctx.globalAlpha = 0.28;
       ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
       ctx.fill();
@@ -152,11 +172,15 @@ export function render(g: Game, ctx: CanvasRenderingContext2D): void {
 
 // ---------- Éléments ----------
 
+let bgGradient: CanvasGradient | null = null;
+
 function drawBackground(ctx: CanvasRenderingContext2D, g: Game): void {
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, '#171325');
-  grad.addColorStop(1, '#0f0c1a');
-  ctx.fillStyle = grad;
+  if (!bgGradient) {
+    bgGradient = ctx.createLinearGradient(0, 0, 0, H);
+    bgGradient.addColorStop(0, '#171325');
+    bgGradient.addColorStop(1, '#0f0c1a');
+  }
+  ctx.fillStyle = bgGradient;
   // léger débord pour couvrir les bords pendant le screenshake
   ctx.fillRect(-8, -8, W + 16, H + 16);
 
@@ -182,7 +206,10 @@ function tracePath(ctx: CanvasRenderingContext2D, path: PathGeom): void {
   for (let i = 1; i < path.pts.length; i++) ctx.lineTo(path.pts[i].x, path.pts[i].y);
 }
 
-function drawPath(ctx: CanvasRenderingContext2D, path: PathGeom, active: boolean, used: boolean, time: number): void {
+let pathLayer: HTMLCanvasElement | null = null;
+let pathLayerKey = '';
+
+function drawPathStatic(ctx: CanvasRenderingContext2D, path: PathGeom, active: boolean, used: boolean): void {
   ctx.save();
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
@@ -194,28 +221,33 @@ function drawPath(ctx: CanvasRenderingContext2D, path: PathGeom, active: boolean
   // bordure
   ctx.strokeStyle = active ? 'rgba(224,85,110,0.35)' : 'rgba(120,90,160,0.15)';
   ctx.lineWidth = CELL * 0.72;
-  ctx.setLineDash([]);
   tracePath(ctx, path);
   ctx.stroke();
   ctx.strokeStyle = active ? '#3a2030' : '#241b30';
   ctx.lineWidth = CELL * 0.6;
   tracePath(ctx, path);
   ctx.stroke();
-  // flux d'ichor animé sur les chemins actifs
-  if (active) {
-    ctx.strokeStyle = 'rgba(224,85,110,0.55)';
-    ctx.lineWidth = 3;
-    ctx.setLineDash([8, 16]);
-    ctx.lineDashOffset = -time * 40;
-    tracePath(ctx, path);
-    ctx.stroke();
-  } else if (used) {
+  // pointillés discrets des chemins pas encore actifs
+  if (!active && used) {
     ctx.strokeStyle = 'rgba(170,120,200,0.25)';
     ctx.lineWidth = 2;
     ctx.setLineDash([4, 10]);
     tracePath(ctx, path);
     ctx.stroke();
   }
+  ctx.restore();
+}
+
+function drawPathIchor(ctx: CanvasRenderingContext2D, path: PathGeom, time: number): void {
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(224,85,110,0.55)';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([8, 16]);
+  ctx.lineDashOffset = -time * 40;
+  tracePath(ctx, path);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -345,6 +377,21 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
+// Gradients de corps mis en cache par type d'ennemi (centrés sur l'origine, on translate)
+const enemyGradients = new Map<string, CanvasGradient>();
+
+function enemyGradient(ctx: CanvasRenderingContext2D, e: EnemyInst): CanvasGradient {
+  let grad = enemyGradients.get(e.defId);
+  if (!grad) {
+    const r = e.def.radius;
+    grad = ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.2, 0, 0, r);
+    grad.addColorStop(0, e.def.color);
+    grad.addColorStop(1, e.def.color2 ?? e.def.color);
+    enemyGradients.set(e.defId, grad);
+  }
+  return grad;
+}
+
 function drawEnemy(ctx: CanvasRenderingContext2D, e: EnemyInst, time: number): void {
   const { x, y } = e.pos;
   const r = e.def.radius;
@@ -362,13 +409,11 @@ function drawEnemy(ctx: CanvasRenderingContext2D, e: EnemyInst, time: number): v
     ctx.setLineDash([]);
   }
 
-  // corps
-  const grad = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.2, x, y, r);
-  grad.addColorStop(0, e.def.color);
-  grad.addColorStop(1, e.def.color2 ?? e.def.color);
-  ctx.fillStyle = grad;
+  // corps (gradient en cache, dessiné à l'origine puis translaté)
+  ctx.translate(x, y);
+  ctx.fillStyle = enemyGradient(ctx, e);
   ctx.beginPath();
-  ctx.ellipse(x, y, r * (1 + wob), r * (1 - wob), 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, r * (1 + wob), r * (1 - wob), 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = 'rgba(0,0,0,0.45)';
   ctx.lineWidth = 1.5;
@@ -377,9 +422,10 @@ function drawEnemy(ctx: CanvasRenderingContext2D, e: EnemyInst, time: number): v
   // yeux
   ctx.fillStyle = '#1a1424';
   ctx.beginPath();
-  ctx.arc(x - r * 0.3, y - r * 0.15, Math.max(1.5, r * 0.13), 0, Math.PI * 2);
-  ctx.arc(x + r * 0.3, y - r * 0.15, Math.max(1.5, r * 0.13), 0, Math.PI * 2);
+  ctx.arc(-r * 0.3, -r * 0.15, Math.max(1.5, r * 0.13), 0, Math.PI * 2);
+  ctx.arc(r * 0.3, -r * 0.15, Math.max(1.5, r * 0.13), 0, Math.PI * 2);
   ctx.fill();
+  ctx.translate(-x, -y);
 
   if (e.enraged) {
     ctx.fillStyle = '#ff5e5e';

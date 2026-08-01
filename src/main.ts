@@ -212,6 +212,7 @@ requestAnimationFrame(frame);
   openRewardFlow,
   openDefeat,
   setAscension,
+  render: () => render(g, ctx),
 };
 
 if (import.meta.env.DEV) {

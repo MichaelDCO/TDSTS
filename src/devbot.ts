@@ -62,7 +62,61 @@ function bestSpots(c: CombatState): { x: number; y: number; cov: number }[] {
   return scored.sort((a, b) => b.cov - a.cov);
 }
 
+/**
+ * Benchmark du rendu : état de stress synthétique (60 ennemis, 50 projectiles)
+ * puis 300 rendus chronométrés. Usage console : __benchRender()
+ */
+function installBench(g: Game): void {
+  (window as unknown as Record<string, unknown>).__benchRender = () => {
+    const w = window as unknown as Record<string, { g: Game; setupCombat: (g: Game) => void; render: () => void }>;
+    const rtd = w.__rtd;
+    const $ = (id: string) => document.getElementById(id);
+    if ($('btn-play')) $('btn-play')!.click();
+    else {
+      ($('btn-again') as HTMLButtonElement | null)?.click();
+      ($('btn-play') as HTMLButtonElement | null)?.click();
+    }
+    document.querySelectorAll<HTMLButtonElement>('.class-card button')[0]?.click();
+    if (!g.run) return 'RESET FAILED';
+    g.run.combatIndex = 9;
+    rtd.setupCombat(g);
+    const bench = benchTowers(g.run).slice(0, 3);
+    [{ x: 11, y: 6 }, { x: 13, y: 6 }, { x: 11, y: 8 }].forEach((s, i) => {
+      if (bench[i]) placeTower(g, bench[i].uid, s);
+    });
+    startWave(g);
+    g.paused = false;
+    for (let i = 0; i < 6 * 60; i++) updateCombat(g, 1 / 60);
+    g.paused = true;
+    const c = g.combat!;
+    const base = [...c.enemies];
+    let uid = 900000;
+    while (c.enemies.length < 60 && base.length) {
+      for (const e of base) {
+        if (c.enemies.length >= 60) break;
+        const clone = JSON.parse(JSON.stringify(e)) as typeof e;
+        clone.uid = uid++;
+        clone.dist = Math.max(0, e.dist - (c.enemies.length * 17) % 500);
+        c.enemies.push(clone);
+      }
+    }
+    for (let i = 0; i < 50; i++) {
+      const tgt = c.enemies[i % c.enemies.length];
+      c.projectiles.push({
+        x: 300 + (i * 37) % 500, y: 200 + (i * 53) % 300, speed: 420,
+        targetUid: tgt.uid, lastPos: { ...tgt.pos }, damage: 10, crit: false,
+        splash: 0, effects: { armorPierce: 0 }, color: '#ff9d6b', size: 3,
+        chain: i % 3 === 0 ? { jumps: 1, range: 95, decay: 0.65 } : undefined,
+      });
+    }
+    const t0 = performance.now();
+    for (let i = 0; i < 300; i++) rtd.render();
+    return { enemies: c.enemies.length, proj: c.projectiles.length, msParRendu: Math.round(((performance.now() - t0) / 300) * 1000) / 1000 };
+  };
+}
+
 export function installDevBot(g: Game): void {
+  installBench(g);
   (window as unknown as Record<string, unknown>).__bot = (opts: BotOpts = {}) => {
     const o = { classIdx: 0, cheatGold: 0, deployAt: 80, smartAug: true, ascension: 0, ...opts };
     const $ = (id: string) => document.getElementById(id);
