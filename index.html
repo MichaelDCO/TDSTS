@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rachidus TD — Défends la Flèche</title>
+  </head>
+  <body>
+    <div id="app">
+      <header id="topbar" class="hidden">
+        <div class="tb-group" id="tb-class"></div>
+        <div class="tb-group" id="tb-heart"></div>
+        <div class="tb-group" id="tb-gold"></div>
+        <div class="tb-group" id="tb-progress"></div>
+        <div class="tb-spacer"></div>
+        <div class="tb-group" id="tb-speed"></div>
+      </header>
+      <main id="gamewrap" class="hidden">
+        <canvas id="game" width="1152" height="672"></canvas>
+        <div id="tower-popover" class="hidden"></div>
+      </main>
+      <footer id="dock" class="hidden">
+        <div id="shop-panel">
+          <div id="shop-head">
+            <span class="dock-title">Boutique</span>
+            <button id="btn-lock" class="btn small" title="Conserver cette boutique à la prochaine vague"></button>
+            <button id="btn-reroll" class="btn small"></button>
+          </div>
+          <div id="shop-cards"></div>
+        </div>
+        <div id="bench-panel">
+          <div id="bench-head">
+            <div class="dock-title" id="bench-title">Réserve</div>
+            <button id="btn-deploy" class="btn small"></button>
+          </div>
+          <div id="bench-cards"></div>
+        </div>
+        <div id="wave-panel">
+          <div id="wave-info"></div>
+          <button id="btn-wave" class="btn primary">Lancer la vague</button>
+        </div>
+      </footer>
+      <div id="modal-root"></div>
+      <div id="tooltip" class="hidden"></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

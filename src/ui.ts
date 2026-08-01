@@ -1,0 +1,553 @@
+import { isMuted, playSfx, toggleMute } from './audio';
+import { CELL, CLASS_COLORS, CLASS_NAMES, RARITY_COLORS, RARITY_NAMES, TOTAL_COMBATS } from './const';
+import { setupCombat, startWave, upcomingPortals } from './combat';
+import { AUGMENTS } from './data/augments';
+import { CLASSES } from './data/classes';
+import { COMBAT_PLAN } from './data/combats';
+import { ENEMIES } from './data/enemies';
+import { TOWERS } from './data/towers';
+import { buyTower, pickupTower, rerollShop, sellTower } from './shop';
+import {
+  MAX_DEPLOY_BONUS, applyAugment, benchTowers, buyDeploySlot, deployCapFor, deploySlotCost,
+  heartMax, interestFor, newRun, pickAugmentOffers, towerEffStats,
+} from './state';
+import type { AugmentDef, ClassId, Game, TowerDef, TowerInst } from './types';
+
+// ---------- Références DOM ----------
+const $ = (id: string) => document.getElementById(id)!;
+let g: Game;
+let canvas: HTMLCanvasElement;
+
+export function initUI(game: Game, cv: HTMLCanvasElement): void {
+  g = game;
+  canvas = cv;
+  $('btn-reroll').addEventListener('click', () => {
+    if (rerollShop(g)) {
+      playSfx('reroll');
+      refreshDock();
+    }
+  });
+  $('btn-wave').addEventListener('click', () => {
+    if (g.combat?.phase === 'prep') {
+      startWave(g);
+      hidePopover();
+      refreshDock();
+    }
+  });
+  $('btn-deploy').addEventListener('click', () => {
+    if (g.run && buyDeploySlot(g.run)) {
+      playSfx('buy');
+      refreshDock();
+      updateHUD();
+    }
+  });
+  $('btn-lock').addEventListener('click', () => {
+    if (!g.run) return;
+    g.run.shopLocked = !g.run.shopLocked;
+    playSfx('lock');
+    refreshDock();
+  });
+  buildSpeedButtons();
+  showScreen();
+}
+
+// ---------- Écrans ----------
+
+export function showScreen(): void {
+  const inCombat = g.screen === 'combat';
+  $('topbar').classList.toggle('hidden', !inCombat);
+  $('gamewrap').classList.toggle('hidden', !inCombat);
+  $('dock').classList.toggle('hidden', !inCombat);
+  hidePopover();
+  hideTooltip();
+  if (g.screen === 'menu') renderMenu();
+  else if (g.screen === 'class') renderClassSelect();
+  else if (g.screen === 'victory') renderEndScreen(true);
+  else if (g.screen === 'defeat') renderEndScreen(false);
+  else closeModal();
+  if (inCombat) {
+    refreshDock();
+    updateHUD();
+  }
+}
+
+function modal(html: string, cls = ''): HTMLElement {
+  const root = $('modal-root');
+  root.innerHTML = `<div class="modal-overlay"><div class="modal ${cls}">${html}</div></div>`;
+  return root.querySelector('.modal')!;
+}
+
+function closeModal(): void {
+  $('modal-root').innerHTML = '';
+}
+
+// ---------- Archive locale des runs ----------
+
+interface RunRecord {
+  v: number; // 1 = victoire
+  cls: ClassId;
+  c: number; // combat atteint
+  kills: number;
+  date: number;
+}
+
+function loadRecords(): RunRecord[] {
+  try {
+    return JSON.parse(localStorage.getItem('rtd-records') ?? '[]') as RunRecord[];
+  } catch {
+    return [];
+  }
+}
+
+function saveRunRecord(victory: boolean): void {
+  const run = g.run;
+  if (!run || run.recorded) return;
+  run.recorded = true;
+  if ((window as unknown as Record<string, unknown>).__botRunning) return; // les runs du bot ne comptent pas
+  const recs = loadRecords();
+  recs.push({ v: victory ? 1 : 0, cls: run.classId, c: run.combatIndex, kills: run.stats.kills, date: Date.now() });
+  localStorage.setItem('rtd-records', JSON.stringify(recs.slice(-30)));
+}
+
+function recordsSummaryHtml(): string {
+  const recs = loadRecords();
+  if (!recs.length) return '';
+  const wins = recs.filter((r) => r.v).length;
+  const best = recs.reduce((a, b) => (b.v > a.v || (b.v === a.v && b.c > a.c) ? b : a));
+  const bestTxt = best.v
+    ? `victoire avec ${CLASSES[best.cls].name}`
+    : `combat ${best.c} atteint (${CLASSES[best.cls].name})`;
+  return `<p class="records-line">📜 ${recs.length} run${recs.length > 1 ? 's' : ''} — ${wins} victoire${wins > 1 ? 's' : ''} • Meilleure : ${bestTxt}</p>`;
+}
+
+function renderMenu(): void {
+  const m = modal(`
+    <h1 class="title">Rachidus <span class="accent">TD</span></h1>
+    <p class="subtitle">Défendez le Cœur de la Flèche contre la corruption</p>
+    ${recordsSummaryHtml()}
+    <div class="menu-help">
+      <p>🏰 Un <b>tower defense roguelite</b> : 10 combats, des portails qui s'ouvrent en pleine bataille,
+      une boutique aléatoire à relancer et des augments à choisir entre les combats.</p>
+      <ul>
+        <li>🛒 Achetez des tours en boutique (elle se renouvelle à chaque vague)</li>
+        <li>🧱 Posez-les hors des fissures — les ennemis suivent les fissures jusqu'au Cœur</li>
+        <li>⚠️ Surveillez les portails : de nouveaux s'ouvrent en cours de combat</li>
+        <li>📈 Gardez de l'or : +1 d'intérêt par tranche de 10 à chaque vague (max 5)</li>
+        <li>💎 Vos tours sont conservées de combat en combat — redéployez-les à chaque carte</li>
+        <li>⌨️ Raccourcis : <b>Espace</b> pause • <b>1/2/3</b> vitesse • <b>R</b> relancer • <b>L</b> verrouiller • <b>M</b> muet</li>
+      </ul>
+    </div>
+    <button class="btn primary big" id="btn-play">⚔️ Nouvelle run</button>
+  `, 'menu-modal');
+  m.querySelector('#btn-play')!.addEventListener('click', () => {
+    g.screen = 'class';
+    showScreen();
+  });
+}
+
+function renderClassSelect(): void {
+  const cards = (Object.keys(CLASSES) as ClassId[]).map((id) => {
+    const c = CLASSES[id];
+    const towers = c.startingTowers.map((tid) => TOWERS[tid].glyph).join(' ');
+    return `
+      <div class="class-card" data-class="${id}" style="--cc:${c.color}">
+        <div class="class-glyph">${c.glyph}</div>
+        <h2>${c.name}</h2>
+        <p class="class-title">${c.title}</p>
+        <p class="class-desc">${c.desc}</p>
+        <p class="class-passive"><b>${c.passiveName}</b> — ${c.passiveDesc}</p>
+        <p class="class-towers">Tours de départ : ${towers}</p>
+        <button class="btn primary">Choisir</button>
+      </div>`;
+  }).join('');
+  const m = modal(`<h1>Choisissez votre champion</h1><div class="class-row">${cards}</div>`, 'class-modal');
+  m.querySelectorAll<HTMLElement>('.class-card').forEach((el) => {
+    el.querySelector('button')!.addEventListener('click', () => {
+      const cls = el.dataset.class as ClassId;
+      newRun(g, cls);
+      setupCombat(g);
+      g.screen = 'combat';
+      showScreen();
+      toastCombatIntro();
+    });
+  });
+}
+
+function toastCombatIntro(): void {
+  const run = g.run!;
+  const def = COMBAT_PLAN[run.combatIndex - 1];
+  const el = document.createElement('div');
+  el.className = 'combat-toast';
+  el.innerHTML = `<b>Combat ${run.combatIndex}/${TOTAL_COMBATS}</b><span>${def.name}</span>`;
+  $('gamewrap').appendChild(el);
+  setTimeout(() => el.classList.add('gone'), 1900);
+  setTimeout(() => el.remove(), 2500);
+}
+
+// ---------- Fin de combat : récompense → augment ----------
+
+export function openRewardFlow(): void {
+  const run = g.run!;
+  const def = COMBAT_PLAN[run.combatIndex - 1];
+  const isLast = run.combatIndex >= TOTAL_COMBATS;
+  const goldReward = 10 + 2 * run.combatIndex + (def.kind === 'elite' ? 10 : 0);
+  const heal = Math.min(run.mods.healPerCombat, heartMax(run) - run.heartHp);
+  run.gold += goldReward;
+  run.stats.goldEarned += goldReward;
+  run.heartHp += heal;
+
+  if (isLast) {
+    playSfx('victory');
+    g.screen = 'victory';
+    showScreen();
+    return;
+  }
+
+  const m = modal(`
+    <h1>✨ Combat remporté !</h1>
+    <p class="reward-line">💰 Butin : <b>+${goldReward} or</b></p>
+    <p class="reward-line">❤️ Le Cœur récupère <b>${heal} PV</b></p>
+    <button class="btn primary big" id="btn-next">Choisir un augment</button>
+  `);
+  m.querySelector('#btn-next')!.addEventListener('click', () => openAugmentChoice(def.kind === 'elite'));
+}
+
+function augmentCard(a: AugmentDef): string {
+  const color = CLASS_COLORS[a.classId];
+  return `
+    <div class="augment-card ${a.rarity}" data-aug="${a.id}" style="--cc:${color}">
+      <div class="aug-glyph">${a.glyph}</div>
+      <div class="aug-name">${a.name}</div>
+      <div class="aug-class" style="color:${color}">${CLASS_NAMES[a.classId]}${a.rarity === 'rare' ? ' • Rare' : ''}</div>
+      <div class="aug-desc">${a.desc}</div>
+    </div>`;
+}
+
+function openAugmentChoice(afterElite: boolean): void {
+  const run = g.run!;
+  let offers = pickAugmentOffers(run, 3, afterElite);
+  let rerollUsed = false;
+
+  const draw = () => {
+    const m = modal(`
+      <h1>Choisissez un augment</h1>
+      <p class="subtitle">Général ou lié à votre classe — il s'applique pour tout le reste de la run</p>
+      <div class="augment-row">${offers.map(augmentCard).join('')}</div>
+      <button class="btn small" id="btn-aug-reroll" ${rerollUsed ? 'disabled' : ''}>🎲 Relancer (gratuit, 1×)</button>
+    `, 'augment-modal');
+    m.querySelectorAll<HTMLElement>('.augment-card').forEach((el) => {
+      el.addEventListener('click', () => {
+        playSfx('augment');
+        applyAugment(run, el.dataset.aug!);
+        run.combatIndex++;
+        setupCombat(g);
+        closeModal();
+        showScreen();
+        toastCombatIntro();
+      });
+    });
+    m.querySelector('#btn-aug-reroll')!.addEventListener('click', () => {
+      if (rerollUsed) return;
+      rerollUsed = true;
+      offers = pickAugmentOffers(run, 3, afterElite);
+      draw();
+    });
+  };
+  draw();
+}
+
+function renderEndScreen(victory: boolean): void {
+  if (!g.run) {
+    g.screen = 'menu';
+    renderMenu();
+    return;
+  }
+  saveRunRecord(victory);
+  const run = g.run;
+  const s = run.stats;
+  const m = modal(`
+    <h1>${victory ? '👑 VICTOIRE !' : '💀 Le Cœur a été détruit…'}</h1>
+    <p class="subtitle">${victory
+      ? 'Le Roi des Slimes n’est plus qu’une flaque. La Flèche est sauvée.'
+      : `Vous avez tenu jusqu'au combat ${run.combatIndex} (${COMBAT_PLAN[run.combatIndex - 1].name}).`}</p>
+    <div class="stats-grid">
+      <div><b>${s.kills}</b><span>ennemis éliminés</span></div>
+      <div><b>${s.wavesCleared}</b><span>vagues repoussées</span></div>
+      <div><b>${Math.round(s.dmgDealt)}</b><span>dégâts infligés</span></div>
+      <div><b>${s.goldEarned}</b><span>or amassé</span></div>
+      <div><b>${run.towers.length}</b><span>tours possédées</span></div>
+      <div><b>${run.augments.length}</b><span>augments choisis</span></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn primary big" id="btn-again">⚔️ Nouvelle run</button>
+      <button class="btn big" id="btn-menu">Menu</button>
+    </div>
+  `);
+  m.querySelector('#btn-again')!.addEventListener('click', () => {
+    g.screen = 'class';
+    showScreen();
+  });
+  m.querySelector('#btn-menu')!.addEventListener('click', () => {
+    g.screen = 'menu';
+    showScreen();
+  });
+}
+
+export function openDefeat(): void {
+  playSfx('defeat');
+  g.screen = 'defeat';
+  showScreen();
+}
+
+// ---------- HUD ----------
+
+function buildSpeedButtons(): void {
+  const el = $('tb-speed');
+  el.innerHTML = `
+    <button class="btn tiny" data-sp="0">⏸</button>
+    <button class="btn tiny" data-sp="1">×1</button>
+    <button class="btn tiny" data-sp="2">×2</button>
+    <button class="btn tiny" data-sp="3">×3</button>
+    <button class="btn tiny" id="btn-mute" title="Son (M)"></button>`;
+  el.querySelectorAll<HTMLButtonElement>('button[data-sp]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const sp = Number(b.dataset.sp);
+      if (sp === 0) g.paused = !g.paused;
+      else {
+        g.speed = sp;
+        g.paused = false;
+      }
+      updateHUD();
+    });
+  });
+  $('btn-mute').addEventListener('click', () => {
+    toggleMute();
+    updateHUD();
+  });
+}
+
+export function updateHUD(): void {
+  if (!g.run || g.screen !== 'combat') return;
+  const run = g.run;
+  const c = g.combat!;
+  const cls = CLASSES[run.classId];
+  $('tb-class').innerHTML = `<span class="chip" style="--cc:${cls.color}">${cls.glyph} ${cls.name}</span>`;
+  const hm = heartMax(run);
+  const low = run.heartHp <= hm * 0.35;
+  $('tb-heart').innerHTML = `<span class="stat ${low ? 'danger' : ''}">💙 ${Math.max(0, Math.ceil(run.heartHp))}/${hm}</span>`;
+  $('tb-gold').innerHTML = `<span class="stat gold">💰 ${run.gold}</span><span class="interest" title="Intérêts par vague">📈 +${interestFor(run)}</span>`;
+  const waveNum = Math.min(c.waveIndex + 1, c.waves.length);
+  $('tb-progress').innerHTML = `
+    <span class="stat">${c.def.kind === 'elite' ? '👹 ' : c.def.kind === 'boss' ? '👑 ' : ''}Combat ${run.combatIndex}/${TOTAL_COMBATS}</span>
+    <span class="stat dim">${c.def.name}</span>
+    <span class="stat">🌊 Vague ${waveNum}/${c.waves.length}</span>`;
+  $('tb-speed').querySelectorAll<HTMLButtonElement>('button[data-sp]').forEach((b) => {
+    const sp = Number(b.dataset.sp);
+    b.classList.toggle('active', sp === 0 ? g.paused : !g.paused && g.speed === sp);
+  });
+  $('btn-mute').textContent = isMuted() ? '🔇' : '🔊';
+}
+
+// ---------- Dock : boutique / réserve / vague ----------
+
+function towerStatsHtml(def: TowerDef, inst?: TowerInst): string {
+  const run = g.run!;
+  const fake = (inst ?? { defId: def.id, buffMult: 1 }) as TowerInst;
+  const s = towerEffStats(run, fake);
+  const lines: string[] = [];
+  if (def.kind !== 'aura') {
+    if (s.damage > 0) lines.push(`⚔️ ${Math.round(s.damage * 10) / 10} dégâts`);
+    lines.push(`⏱️ ${(1 / s.cooldown).toFixed(2)} att/s`);
+    if (s.damage > 0) lines.push(`📊 ${(s.damage / s.cooldown).toFixed(1)} DPS${(s.targets ?? 1) > 1 ? ` ×${s.targets} cibles` : ''}${def.kind === 'pulse' ? ' (zone)' : ''}`);
+  }
+  lines.push(`🎯 portée ${Math.round(s.range)}`);
+  if (s.critChance > 0) lines.push(`💥 ${Math.round(s.critChance * 100)} % crit`);
+  if (def.splash) lines.push(`💣 zone ${def.splash}px`);
+  if (def.ignoreArmor) lines.push('🔮 ignore l’armure');
+  return lines.map((l) => `<div>${l}</div>`).join('');
+}
+
+function towerTooltipHtml(def: TowerDef, inst?: TowerInst): string {
+  return `
+    <div class="tt-head" style="color:${CLASS_COLORS[def.classId]}">${def.glyph} <b>${def.name}</b></div>
+    <div class="tt-sub" style="color:${RARITY_COLORS[def.rarity]}">${RARITY_NAMES[def.rarity]} • ${CLASS_NAMES[def.classId]} • ${def.cost} or</div>
+    <div class="tt-stats">${towerStatsHtml(def, inst)}</div>
+    <div class="tt-desc">${def.desc}</div>`;
+}
+
+export function refreshDock(): void {
+  if (!g.run || !g.combat || g.screen !== 'combat') return;
+  const run = g.run;
+  const c = g.combat;
+  const prep = c.phase === 'prep';
+
+  // boutique
+  const shopEl = $('shop-cards');
+  shopEl.innerHTML = run.shop.map((defId, i) => {
+    if (!defId) return `<div class="shop-card empty"></div>`;
+    const def = TOWERS[defId];
+    const afford = run.gold >= def.cost && prep;
+    return `
+      <div class="shop-card ${afford ? '' : 'disabled'}" data-slot="${i}" style="--rc:${RARITY_COLORS[def.rarity]};--cc:${CLASS_COLORS[def.classId]}">
+        <div class="sc-glyph">${def.glyph}</div>
+        <div class="sc-name">${def.name}</div>
+        <div class="sc-cost">💰${def.cost}</div>
+      </div>`;
+  }).join('');
+  shopEl.querySelectorAll<HTMLElement>('.shop-card[data-slot]').forEach((el) => {
+    const slot = Number(el.dataset.slot);
+    const defId = run.shop[slot];
+    if (!defId) return;
+    el.addEventListener('click', () => {
+      if (buyTower(g, slot)) {
+        playSfx('buy');
+        refreshDock();
+        hideTooltip();
+      }
+    });
+    el.addEventListener('mousemove', (ev) => showTooltip(towerTooltipHtml(TOWERS[defId]), ev));
+    el.addEventListener('mouseleave', hideTooltip);
+  });
+
+  const rerollBtn = $('btn-reroll') as HTMLButtonElement;
+  rerollBtn.textContent = `🎲 Relancer (${run.mods.rerollCost} or)`;
+  rerollBtn.disabled = !prep || run.gold < run.mods.rerollCost;
+  const lockBtn = $('btn-lock') as HTMLButtonElement;
+  lockBtn.textContent = run.shopLocked ? '🔒 Verrouillée' : '🔓 Verrouiller';
+  lockBtn.classList.toggle('locked', run.shopLocked);
+
+  // réserve
+  const bench = benchTowers(run);
+  const deployed = run.towers.length - bench.length;
+  const cap = deployCapFor(run);
+  $('bench-title').innerHTML = `Réserve <span class="${deployed >= cap ? 'cap-full' : 'cap-ok'}">— en jeu ${deployed}/${cap}</span>`;
+  const deployBtn = $('btn-deploy') as HTMLButtonElement;
+  if (run.deployBonus >= MAX_DEPLOY_BONUS) {
+    deployBtn.textContent = '⛺ Déploiement max';
+    deployBtn.disabled = true;
+  } else {
+    deployBtn.textContent = `⛺ +1 déploiement (${deploySlotCost(run)} or)`;
+    deployBtn.disabled = run.gold < deploySlotCost(run);
+  }
+  const benchEl = $('bench-cards');
+  benchEl.innerHTML = bench.length
+    ? bench.map((t) => {
+      const def = TOWERS[t.defId];
+      const sel = g.ui.selectedBench === t.uid;
+      return `<div class="bench-card ${sel ? 'selected' : ''}" data-uid="${t.uid}" style="--rc:${RARITY_COLORS[def.rarity]}">
+        <div class="sc-glyph">${def.glyph}</div>
+      </div>`;
+    }).join('')
+    : `<div class="bench-hint">Achetez des tours puis cliquez-les pour les poser</div>`;
+  benchEl.querySelectorAll<HTMLElement>('.bench-card').forEach((el) => {
+    const uid = Number(el.dataset.uid);
+    const t = run.towers.find((x) => x.uid === uid)!;
+    el.addEventListener('click', () => {
+      g.ui.selectedBench = g.ui.selectedBench === uid ? null : uid;
+      g.ui.selectedTower = null;
+      hidePopover();
+      refreshDock();
+    });
+    el.addEventListener('mousemove', (ev) => showTooltip(towerTooltipHtml(TOWERS[t.defId], t), ev));
+    el.addEventListener('mouseleave', hideTooltip);
+  });
+
+  // panneau vague
+  const waveBtn = $('btn-wave') as HTMLButtonElement;
+  const waveNum = c.waveIndex + 1;
+  if (prep) {
+    waveBtn.disabled = false;
+    waveBtn.textContent = `⚔️ Lancer la vague ${waveNum}/${c.waves.length}`;
+  } else {
+    waveBtn.disabled = true;
+    waveBtn.textContent = c.phase === 'wave' ? '🌊 Vague en cours…' : '…';
+  }
+  const warn = upcomingPortals(c);
+  const warnHtml = prep && warn.length
+    ? `<div class="portal-warn">⚠️ ${warn.length > 1 ? `${warn.length} nouveaux portails s'ouvriront` : 'Un nouveau portail s’ouvrira'} après cette vague !</div>`
+    : '';
+  $('wave-info').innerHTML = prep
+    ? warnHtml + wavePreviewHtml()
+    : `<span class="dim">Vous pouvez encore poser des tours de la réserve !</span>`;
+}
+
+/** Composition de la prochaine vague, en pastilles colorées par type d'ennemi. */
+function wavePreviewHtml(): string {
+  const c = g.combat!;
+  const wave = c.waves[c.waveIndex];
+  if (!wave) return '';
+  const counts = new Map<string, number>();
+  for (const s of wave.spawns) counts.set(s.enemyId, (counts.get(s.enemyId) ?? 0) + 1);
+  const chips = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([id, n]) => {
+      const def = ENEMIES[id];
+      const special = def.kind !== 'normal' ? ` ${def.kind}` : '';
+      return `<span class="wp-chip${special}" title="${def.name}${def.desc ? ' — ' + def.desc : ''}">
+        <i style="background:${def.color}"></i>${def.kind === 'boss' ? '👑' : def.kind === 'elite' ? '👹' : ''}×${n}</span>`;
+    })
+    .join('');
+  return `<div class="wave-preview"><span class="wp-label">En approche :</span>${chips}</div>`;
+}
+
+// ---------- Popover de tour posée ----------
+
+export function showPopover(uid: number): void {
+  const run = g.run!;
+  const t = run.towers.find((x) => x.uid === uid);
+  if (!t || !t.cell) return;
+  const def = TOWERS[t.defId];
+  const prep = g.combat?.phase === 'prep';
+  const pop = $('tower-popover');
+  pop.classList.remove('hidden');
+  pop.innerHTML = `
+    ${towerTooltipHtml(def, t)}
+    <div class="tt-kills">☠️ ${t.kills} éliminations${t.buffMult > 1 ? ` • 🚩 +${Math.round((t.buffMult - 1) * 100)} % dégâts` : ''}</div>
+    <div class="btn-row">
+      <button class="btn small" id="pop-pickup" ${prep ? '' : 'disabled'}>↩️ Reprendre</button>
+      <button class="btn small danger" id="pop-sell" ${prep ? '' : 'disabled'}>💰 Vendre (+${def.cost})</button>
+    </div>`;
+  const scale = canvas.clientWidth / canvas.width;
+  const px = (t.cell.x + 1) * CELL * scale + 8;
+  const py = t.cell.y * CELL * scale;
+  pop.style.left = `${Math.min(px, canvas.clientWidth - 240)}px`;
+  pop.style.top = `${Math.min(py, canvas.clientHeight - 220)}px`;
+  pop.querySelector('#pop-pickup')!.addEventListener('click', () => {
+    if (pickupTower(g, uid)) {
+      hidePopover();
+      refreshDock();
+    }
+  });
+  pop.querySelector('#pop-sell')!.addEventListener('click', () => {
+    if (sellTower(g, uid)) {
+      playSfx('sell');
+      hidePopover();
+      refreshDock();
+    }
+  });
+}
+
+export function hidePopover(): void {
+  $('tower-popover').classList.add('hidden');
+  if (g) g.ui.selectedTower = null;
+}
+
+// ---------- Tooltip ----------
+
+export function showTooltip(html: string, ev: MouseEvent): void {
+  const tt = $('tooltip');
+  tt.innerHTML = html;
+  tt.classList.remove('hidden');
+  const pad = 14;
+  let x = ev.clientX + pad;
+  let y = ev.clientY - 10;
+  const rect = tt.getBoundingClientRect();
+  if (x + rect.width > window.innerWidth - 8) x = ev.clientX - rect.width - pad;
+  if (y + rect.height > window.innerHeight - 8) y = window.innerHeight - rect.height - 8;
+  tt.style.left = `${x}px`;
+  tt.style.top = `${Math.max(8, y)}px`;
+}
+
+export function hideTooltip(): void {
+  $('tooltip').classList.add('hidden');
+}
