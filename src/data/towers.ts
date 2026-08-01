@@ -135,8 +135,9 @@ export const TOWERS: Record<string, TowerDef> = {
     cooldown: 0.8,
     range: 150,
     projectileSpeed: 400,
-    poison: 4,
-    desc: 'Applique 4 piles de Poison (1 dégât/s par pile, ignore l’armure). Se cumule sans limite.',
+    splash: 46,
+    poison: 5,
+    desc: 'La fiole éclate au sol : 5 piles de Poison à tous les ennemis éclaboussés (1 dégât/s par pile, ignore l’armure).',
   },
   nuage: {
     id: 'nuage',
@@ -161,7 +162,7 @@ export const TOWERS: Record<string, TowerDef> = {
     rarity: 'rare',
     cost: 8,
     kind: 'pulse',
-    damage: 9,
+    damage: 10,
     cooldown: 0.6,
     range: 120,
     slow: { factor: 0.3, duration: 1.2 },
@@ -178,8 +179,8 @@ export const TOWERS: Record<string, TowerDef> = {
     damage: 0,
     cooldown: 1.2,
     range: 160,
-    mark: { amp: 0.25, duration: 2.5 },
-    desc: 'Marque les ennemis proches : ils subissent +25 % de dégâts de toutes les sources.',
+    mark: { amp: 0.3, duration: 2.5 },
+    desc: 'Marque les ennemis proches : ils subissent +30 % de dégâts de toutes les sources.',
   },
 
   // ---------- LE DEFECT (orbes, foudre en chaîne, givre, rayons) ----------

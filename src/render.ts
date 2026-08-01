@@ -58,10 +58,31 @@ export function render(g: Game, ctx: CanvasRenderingContext2D): void {
     ctx.save();
     ctx.shadowColor = p.color;
     ctx.shadowBlur = 8;
-    ctx.fillStyle = p.color;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-    ctx.fill();
+    if (p.chain) {
+      // éclair : zigzag scintillant orienté vers la cible
+      const dx = p.lastPos.x - p.x;
+      const dy = p.lastPos.y - p.y;
+      const d = Math.hypot(dx, dy) || 1;
+      const ux = dx / d;
+      const uy = dy / d;
+      const px = -uy;
+      const py = ux;
+      const len = Math.min(16, d);
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      for (let s = 1; s <= 3; s++) {
+        const j = s < 3 ? (Math.random() * 2 - 1) * 4 : 0;
+        ctx.lineTo(p.x + ux * (len * s) / 3 + px * j, p.y + uy * (len * s) / 3 + py * j);
+      }
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
   }
 
