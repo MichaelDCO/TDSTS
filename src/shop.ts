@@ -91,6 +91,27 @@ export function upgradeTower(g: Game, uid: number): boolean {
   return true;
 }
 
+/**
+ * Fusionne deux tours identiques (même type, même niveau) de la réserve :
+ * l'une absorbe l'autre et gagne +1 niveau ⭐. Préparation uniquement.
+ */
+export function fuseTowers(g: Game, uid: number): boolean {
+  const run = g.run!;
+  if (!g.combat || g.combat.phase !== 'prep') return false;
+  const t = run.towers.find((x) => x.uid === uid);
+  if (!t || t.placed || t.level >= MAX_TOWER_LEVEL) return false;
+  const twin = run.towers.find(
+    (x) => x.uid !== uid && !x.placed && x.defId === t.defId && x.level === t.level,
+  );
+  if (!twin) return false;
+  t.level++;
+  t.kills += twin.kills;
+  t.permDmg = Math.max(t.permDmg, twin.permDmg);
+  run.towers.splice(run.towers.indexOf(twin), 1);
+  if (g.ui.selectedBench === twin.uid) g.ui.selectedBench = null;
+  return true;
+}
+
 /** Reprend une tour posée pour la remettre en réserve (préparation uniquement). */
 export function pickupTower(g: Game, uid: number): boolean {
   const run = g.run!;

@@ -796,6 +796,16 @@ canvas#game {
   color: var(--dim);
 }
 
+/* fiche d'action compacte (boutique / réserve) */
+.modal.sheet-modal {
+  max-width: 330px;
+  padding: 18px 20px;
+}
+
+.modal.sheet-modal .tt-desc {
+  margin-bottom: 4px;
+}
+
 /* ---------- Choix de nœud (carte StS) ---------- */
 .node-row {
   display: flex;

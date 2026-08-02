@@ -7,7 +7,7 @@ import { CLASSES } from './data/classes';
 import { COMBAT_PLAN } from './data/combats';
 import { ENEMIES } from './data/enemies';
 import { TOWERS } from './data/towers';
-import { buyTower, pickupTower, rerollShop, sellTower, upgradeTower } from './shop';
+import { buyTower, fuseTowers, pickupTower, rerollShop, sellTower, upgradeTower } from './shop';
 import {
   ASCENSION_DESCS, MAX_DEPLOY_BONUS, MAX_TOWER_LEVEL, applyAugment, benchTowers, buyDeploySlot,
   deployCapFor, deploySlotCost, heartMax, interestFor, newRun, pickAugmentOffers, placedTowers,
@@ -590,6 +590,11 @@ export function refreshDock(): void {
     const defId = run.shop[slot];
     if (!defId) return;
     el.addEventListener('click', () => {
+      if (IS_COARSE) {
+        // tactile : d'abord la fiche (infos + prix), l'achat est un choix explicite
+        openShopSheet(slot);
+        return;
+      }
       if (buyTower(g, slot)) {
         playSfx('buy');
         refreshDock();
@@ -636,10 +641,22 @@ export function refreshDock(): void {
     const uid = Number(el.dataset.uid);
     const t = run.towers.find((x) => x.uid === uid)!;
     el.addEventListener('click', () => {
+      if (IS_COARSE) {
+        // tactile : fiche complète (placer / améliorer / fusionner / vendre)
+        hideTooltip();
+        openBenchSheet(uid);
+        return;
+      }
       g.ui.selectedBench = g.ui.selectedBench === uid ? null : uid;
       g.ui.selectedTower = null;
       hidePopover();
       refreshDock();
+    });
+    // souris : clic droit ouvre la même fiche de gestion
+    el.addEventListener('contextmenu', (ev) => {
+      ev.preventDefault();
+      hideTooltip();
+      openBenchSheet(uid);
     });
     if (!IS_COARSE) {
       el.addEventListener('mousemove', (ev) => showTooltip(towerTooltipHtml(TOWERS[t.defId], t), ev));
@@ -696,6 +713,97 @@ function wavePreviewHtml(): string {
     if (next) html += `<div class="wave-preview scry"><span class="wp-label">👁️ Puis :</span>${next}</div>`;
   }
   return html;
+}
+
+// ---------- Fiches d'action (mobile : voir avant d'acheter / gérer la réserve) ----------
+
+/** Fiche d'une carte de boutique : infos complètes + bouton d'achat explicite. */
+export function openShopSheet(slot: number): void {
+  const run = g.run!;
+  const defId = run.shop[slot];
+  if (!defId || !g.combat) return;
+  const def = TOWERS[defId];
+  const prep = g.combat.phase === 'prep';
+  const canBuy = prep && run.gold >= def.cost;
+  const m = modal(`
+    ${towerTooltipHtml(def)}
+    <div class="btn-row">
+      <button class="btn primary" id="sh-buy" ${canBuy ? '' : 'disabled'}>💰 Acheter (${def.cost} or)</button>
+      <button class="btn" id="sh-close">Fermer</button>
+    </div>
+  `, 'sheet-modal');
+  m.querySelector('#sh-buy')!.addEventListener('click', () => {
+    if (buyTower(g, slot)) {
+      playSfx('buy');
+      closeModal();
+      refreshDock();
+    }
+  });
+  m.querySelector('#sh-close')!.addEventListener('click', closeModal);
+}
+
+/** Fiche d'une tour en réserve : placer, améliorer, fusionner, vendre. */
+export function openBenchSheet(uid: number): void {
+  const run = g.run!;
+  const t = run.towers.find((x) => x.uid === uid);
+  if (!t || t.placed || !g.combat) return;
+  const def = TOWERS[t.defId];
+  const prep = g.combat.phase === 'prep';
+  const canPlace = prep || g.combat.phase === 'wave';
+  const canUp = t.level < MAX_TOWER_LEVEL;
+  const upCost = canUp ? upgradeCost(run, t) : 0;
+  const twin = run.towers.find(
+    (x) => x.uid !== t.uid && !x.placed && x.defId === t.defId && x.level === t.level,
+  );
+  const sellBack = def.cost + Math.floor(((t.level >= 2 ? def.cost * 3 : 0) + (t.level >= 3 ? def.cost * 5 : 0)) / 2);
+  const m = modal(`
+    <div class="pop-stars">${'⭐'.repeat(t.level)}</div>
+    ${towerTooltipHtml(def, t)}
+    <div class="btn-row">
+      <button class="btn primary" id="sh-place" ${canPlace ? '' : 'disabled'}>🧱 Placer</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn small" id="sh-up" ${prep && canUp && run.gold >= upCost ? '' : 'disabled'}>
+        ${canUp ? `⭐ Améliorer (${upCost} or)` : '⭐ Niveau max'}</button>
+      <button class="btn small" id="sh-fuse" ${prep && canUp && twin ? '' : 'disabled'}
+        title="Fusionne deux tours identiques de même niveau en une tour de niveau supérieur">
+        ♻️ Fusionner${twin ? '' : ' (aucun double)'}</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn small danger" id="sh-sell" ${prep ? '' : 'disabled'}>💰 Vendre (+${sellBack})</button>
+      <button class="btn small" id="sh-close">Fermer</button>
+    </div>
+  `, 'sheet-modal');
+  m.querySelector('#sh-place')!.addEventListener('click', () => {
+    g.ui.selectedBench = uid;
+    g.ui.selectedTower = null;
+    closeModal();
+    refreshDock();
+  });
+  m.querySelector('#sh-up')!.addEventListener('click', () => {
+    if (upgradeTower(g, uid)) {
+      playSfx('buy');
+      updateHUD();
+      refreshDock();
+      openBenchSheet(uid);
+    }
+  });
+  m.querySelector('#sh-fuse')!.addEventListener('click', () => {
+    if (fuseTowers(g, uid)) {
+      playSfx('augment');
+      refreshDock();
+      openBenchSheet(uid);
+    }
+  });
+  m.querySelector('#sh-sell')!.addEventListener('click', () => {
+    if (sellTower(g, uid)) {
+      playSfx('sell');
+      closeModal();
+      updateHUD();
+      refreshDock();
+    }
+  });
+  m.querySelector('#sh-close')!.addEventListener('click', closeModal);
 }
 
 // ---------- Popover de tour posée ----------

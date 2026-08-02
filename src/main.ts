@@ -3,14 +3,14 @@ import { playSfx, toggleMute } from './audio';
 import { CELL } from './const';
 import { setupCombat, startWave, updateCombat } from './combat';
 import { render } from './render';
-import { buyTower, cellBuildable, placeTower, rerollShop, sellTower, upgradeTower } from './shop';
+import { buyTower, cellBuildable, fuseTowers, placeTower, rerollShop, sellTower, upgradeTower } from './shop';
 import {
   applyAugment, benchTowers, buyDeploySlot, createGame, heartMax, pickAugmentOffers,
   placedTowers, towerEffStats,
 } from './state';
 import {
-  hidePopover, hideTooltip, initUI, openDefeat, openRewardFlow, refreshDock, setAscension,
-  showPopover, syncMusic, updateHUD,
+  hidePopover, hideTooltip, initUI, openBenchSheet, openDefeat, openRewardFlow, openShopSheet,
+  refreshDock, setAscension, showPopover, syncMusic, updateHUD,
 } from './ui';
 import type { Vec } from './types';
 
@@ -199,7 +199,10 @@ requestAnimationFrame(frame);
   sellTower,
   rerollShop,
   upgradeTower,
+  fuseTowers,
   showPopover,
+  openBenchSheet,
+  openShopSheet,
   applyAugment,
   pickAugmentOffers,
   towerEffStats,
