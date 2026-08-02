@@ -117,10 +117,10 @@ export function heartMax(run: RunState): number {
 export const ASCENSION_DESCS = [
   '',
   'Les ennemis ont +10 % de PV',
-  'L’or d’éliminations par vague est réduit',
-  'Le Cœur perd 10 PV max',
-  'Les ennemis sont 15 % plus rapides',
-  'Les ennemis ont +30 % de PV supplémentaires',
+  'Or d’éliminations réduit et ennemis 5 % plus rapides',
+  'Le Cœur perd 10 PV max et les ennemis gagnent encore +10 % de PV',
+  'Les ennemis sont encore 10 % plus rapides',
+  'Ennemis +20 % de PV ; élites, mini-boss et boss +25 % de PV',
 ];
 
 export function interestFor(run: RunState): number {

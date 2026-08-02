@@ -42,7 +42,7 @@ Puis ouvrir http://localhost:5173
 | 🛡️ **Ironclad** | Dégâts bruts, saignement, feu, zones | Sang Brûlant : +8 PV au Cœur après chaque combat |
 | 🐍 **La Silencieuse** | Poison cumulable, dagues, ralentissements, crits | Anneau du Serpent : 6 tours en boutique au lieu de 5 |
 | ⚡ **Le Defect** | Orbes : foudre en chaîne, givre, rayons hitscan, auras de cadence | Focalisation : +1 tour déployable en permanence |
-| 👁️ **La Watcher** | Postures : ses tours alternent Calme (retenue) et Colère (dégâts ×2,1) | Divination : l'aperçu révèle aussi la vague suivante |
+| 👁️ **La Watcher** | Postures : ses tours alternent Calme (retenue) et Colère (dégâts ×2,0) | Divination : l'aperçu révèle aussi la vague suivante |
 
 La Silencieuse est volontairement plus technique (comme dans StS) : ses poisons
 demandent d'anticiper, ses ralentissements de bien placer. Le Defect récompense
@@ -93,5 +93,7 @@ __bot({ cheatGold: 900, deployAt: 0 })    // stress test riche
 Il joue une run complète (achats, placements par couverture de chemin, augments
 priorisés) et renvoie un rapport par combat — c'est l'outil d'équilibrage principal.
 
-État d'équilibrage actuel : le bot honnête **gagne avec l'Ironclad** et meurt vers le
-combat 8-9 avec la Silencieuse ; un humain qui exploite les synergies fait mieux.
+État d'équilibrage (bot « expert », placements et synergies optimaux) : victoire
+assurée en A0, ~90 % en Ascension 3, ~75 % en A4, ~20 % en A5 — l'échelle
+d'Ascension gradue la difficulté, l'A5 est le mur des maîtres. Les 4 classes
+sont au coude-à-coude à chaque palier.

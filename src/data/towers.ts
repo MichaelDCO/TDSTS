@@ -284,7 +284,7 @@ export const TOWERS: Record<string, TowerDef> = {
     range: 145,
     projectileSpeed: 460,
     stance: true,
-    desc: 'Alterne Calme (dégâts réduits) et Colère (dégâts ×2,1). Frappez au bon moment.',
+    desc: 'Alterne Calme (dégâts réduits) et Colère (dégâts ×2,0). Frappez au bon moment.',
   },
   roue: {
     id: 'roue',
@@ -342,7 +342,7 @@ export const TOWERS: Record<string, TowerDef> = {
     projectileSpeed: 420,
     splash: 42,
     stance: true,
-    desc: 'Divinité furieuse : explosion de zone dévastatrice pendant la Colère (×2,1).',
+    desc: 'Divinité furieuse : explosion de zone dévastatrice pendant la Colère (×2,0).',
   },
   lotus: {
     id: 'lotus',

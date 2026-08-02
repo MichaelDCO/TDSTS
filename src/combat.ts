@@ -154,8 +154,10 @@ function spawnEnemy(g: Game, enemyId: string, portalId: string, startDist = 0): 
   const wMult = waveHpMult(c.waveIndex + 1);
   let ascMult = 1;
   if (run.ascension >= 1) ascMult += 0.1;
-  if (run.ascension >= 5) ascMult += 0.3;
+  if (run.ascension >= 3) ascMult += 0.1;
+  if (run.ascension >= 5) ascMult += 0.2;
   if (run.nodeRisky) ascMult += 0.4; // nœud risqué : ennemis nettement plus coriaces
+  if (run.ascension >= 5 && def.kind !== 'normal') ascMult *= 1.25; // A5 : élites et boss renforcés
   const hp = Math.round(def.hp * c.hpMult * wMult * ascMult);
   const e: EnemyInst = {
     uid: enemyUid++,
@@ -366,7 +368,7 @@ function maxSlow(e: EnemyInst): number {
 function updateEnemies(g: Game, dt: number): void {
   const c = g.combat!;
   const m = g.run!.mods;
-  const ascSpeed = g.run!.ascension >= 4 ? 1.15 : 1;
+  const ascSpeed = 1 + (g.run!.ascension >= 2 ? 0.05 : 0) + (g.run!.ascension >= 4 ? 0.1 : 0);
 
   // soigneurs : régénèrent leurs alliés proches (jamais eux-mêmes)
   for (const h of c.enemies) {
@@ -471,7 +473,7 @@ export function stanceOf(c: CombatState, t: TowerInst, m: Modifiers): 'calm' | '
 
 function stanceDmgMult(st: 'calm' | 'wrath' | null, m: Modifiers): number {
   if (st === 'calm') return m.flags.has('calm_strong') ? 0.85 : 0.7;
-  if (st === 'wrath') return 2.1;
+  if (st === 'wrath') return 2.0;
   return 1;
 }
 
