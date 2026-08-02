@@ -174,6 +174,9 @@ function spawnEnemy(g: Game, enemyId: string, portalId: string, startDist = 0): 
     accelMult: 1,
     accelTimer: 0,
     enraged: false,
+    artifact: def.artifactHits ?? 0,
+    phaseT: 0,
+    summonT: 0,
     alive: true,
     bounty: def.bounty + Math.floor((run.combatIndex - 1) / 3),
     heartDmg: def.heartDmg,
@@ -192,8 +195,23 @@ interface DmgOpts {
   quiet?: boolean;
 }
 
+/** L'ennemi est-il actuellement intangible (cycle de phase) ? */
+export function isPhased(e: EnemyInst): boolean {
+  const p = e.def.phase;
+  if (!p) return false;
+  return e.phaseT % p.cycle > p.cycle - p.duration;
+}
+
 export function damageEnemy(g: Game, e: EnemyInst, raw: number, opts: DmgOpts = {}): number {
   if (!e.alive) return 0;
+  // intangible : seuls les dégâts sur la durée passent
+  if (!opts.isDot && isPhased(e)) return 0;
+  // artefact : bloque entièrement les premiers coups directs
+  if (!opts.isDot && e.artifact > 0) {
+    e.artifact--;
+    if (!opts.quiet) addFloater(g.combat!, e.pos.x, e.pos.y - e.def.radius - 4, '✧', '#e8e8ff', 0.9);
+    return 0;
+  }
   const m = g.run!.mods;
   let dmg = raw;
   if (!opts.isDot && !opts.ignoreArmor) {
@@ -318,6 +336,11 @@ function enemyReachesHeart(g: Game, e: EnemyInst): void {
   const c = g.combat!;
   const run = g.run!;
   e.alive = false;
+  // la Gemme Voleuse ne blesse pas le Cœur : elle s'échappe avec sa prime
+  if (e.def.treasure || e.heartDmg <= 0) {
+    addFloater(c, e.pos.x, e.pos.y - 14, 'échappée !', '#9a8fb8', 1);
+    return;
+  }
   run.heartHp -= e.heartDmg;
   c.shake = Math.min(0.45, 0.25 + e.heartDmg * 0.02);
   playSfx('heartHit');
@@ -344,8 +367,35 @@ function updateEnemies(g: Game, dt: number): void {
   const c = g.combat!;
   const m = g.run!.mods;
   const ascSpeed = g.run!.ascension >= 4 ? 1.15 : 1;
+
+  // soigneurs : régénèrent leurs alliés proches (jamais eux-mêmes)
+  for (const h of c.enemies) {
+    if (!h.alive || !h.def.healAura) continue;
+    for (const e of c.enemies) {
+      if (!e.alive || e === h || e.hp >= e.maxHp) continue;
+      if (Math.hypot(e.pos.x - h.pos.x, e.pos.y - h.pos.y) <= h.def.healAura.radius) {
+        e.hp = Math.min(e.maxHp, e.hp + h.def.healAura.hps * dt);
+      }
+    }
+  }
+
   for (const e of c.enemies) {
     if (!e.alive) continue;
+
+    // horloge d'intangibilité
+    if (e.def.phase) e.phaseT += dt;
+
+    // invocateurs : renforts périodiques
+    if (e.def.summon) {
+      e.summonT += dt;
+      if (e.summonT >= e.def.summon.every && c.enemies.length < 120) {
+        e.summonT = 0;
+        for (let k = 0; k < e.def.summon.count; k++) {
+          spawnEnemy(g, e.def.summon.id, e.portalId, Math.max(0, e.dist - 10 - k * 14));
+        }
+        addFloater(c, e.pos.x, e.pos.y - e.def.radius - 14, `+${e.def.summon.count}`, '#c58aff', 1);
+      }
+    }
 
     // minuteries d'effets
     for (let i = e.slows.length - 1; i >= 0; i--) {

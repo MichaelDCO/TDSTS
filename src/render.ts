@@ -1,5 +1,5 @@
 import { CELL, CLASS_COLORS, COLS, H, RARITY_COLORS, ROWS, W } from './const';
-import { heartPos, stanceOf, towerCenter, upcomingPortals } from './combat';
+import { heartPos, isPhased, stanceOf, towerCenter, upcomingPortals } from './combat';
 import { TOWERS } from './data/towers';
 import { cellBuildable } from './shop';
 import { placedTowers, towerEffStats } from './state';
@@ -409,7 +409,20 @@ function drawEnemy(ctx: CanvasRenderingContext2D, e: EnemyInst, time: number): v
     ctx.setLineDash([]);
   }
 
+  // Gemme Voleuse : halo doré appuyé (objectif bonus)
+  if (e.def.treasure) {
+    ctx.strokeStyle = `rgba(255,215,94,${0.5 + Math.sin(time * 6) * 0.3})`;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.arc(x, y, r + 4, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
   // corps (gradient en cache, dessiné à l'origine puis translaté)
+  const phased = isPhased(e);
+  if (phased) ctx.globalAlpha = 0.35;
   ctx.translate(x, y);
   ctx.fillStyle = enemyGradient(ctx, e);
   ctx.beginPath();
@@ -426,6 +439,7 @@ function drawEnemy(ctx: CanvasRenderingContext2D, e: EnemyInst, time: number): v
   ctx.arc(r * 0.3, -r * 0.15, Math.max(1.5, r * 0.13), 0, Math.PI * 2);
   ctx.fill();
   ctx.translate(-x, -y);
+  ctx.globalAlpha = 1;
 
   if (e.enraged) {
     ctx.fillStyle = '#ff5e5e';
@@ -466,6 +480,21 @@ function drawEnemy(ctx: CanvasRenderingContext2D, e: EnemyInst, time: number): v
   if (e.burn) pip('#ffb26b');
   if (e.slows.length) pip('#7fb2ff');
   if (e.mark) pip('#e08ae0');
+  if (e.artifact > 0) {
+    pip('#e8e8ff');
+    ctx.fillStyle = '#e8e8ff';
+    ctx.font = 'bold 9px system-ui';
+    ctx.textAlign = 'left';
+    ctx.fillText(String(e.artifact), px, py + 3);
+    px += 10;
+  }
+  if (e.def.healAura) {
+    ctx.fillStyle = '#7de0b8';
+    ctx.font = 'bold 10px system-ui';
+    ctx.textAlign = 'left';
+    ctx.fillText('✚', px, py + 3);
+    px += 10;
+  }
 
   // armure
   if (e.def.armor > 0) {

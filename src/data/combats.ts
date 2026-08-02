@@ -49,7 +49,8 @@ export const COMBAT_PLAN: CombatDef[] = [
 
 // Coût en "points de budget" de chaque ennemi
 const COST: Record<string, number> = {
-  slimeP: 1, gremlinF: 1, byrd: 1.5, slimeM: 2, ver: 2, cultiste: 2, poux: 2,
+  serpenteau: 0.7, slimeP: 1, gremlinF: 1, byrd: 1.5, slimeM: 2, ver: 2, cultiste: 2, poux: 2,
+  mystique: 3, orbe_gardien: 2.5, apparition: 2.5,
   slimeG: 4, gremlinC: 4, sentinelle: 5,
 };
 
@@ -59,13 +60,22 @@ const POOLS: Record<number, string[]> = {
   2: ['slimeP', 'slimeM', 'ver', 'gremlinF'],
   3: ['slimeP', 'slimeM', 'ver', 'gremlinF', 'cultiste', 'byrd'],
   4: ['slimeP', 'slimeM', 'ver', 'gremlinF', 'cultiste', 'byrd', 'poux'],
-  5: ['slimeM', 'ver', 'gremlinF', 'cultiste', 'byrd', 'poux', 'slimeG', 'gremlinC'],
-  6: ['slimeM', 'ver', 'gremlinF', 'cultiste', 'byrd', 'poux', 'slimeG', 'gremlinC'],
-  7: ['slimeM', 'ver', 'gremlinF', 'cultiste', 'byrd', 'poux', 'slimeG', 'gremlinC'],
-  8: ['slimeM', 'ver', 'cultiste', 'byrd', 'poux', 'slimeG', 'gremlinC', 'sentinelle'],
-  9: ['slimeM', 'ver', 'cultiste', 'byrd', 'poux', 'slimeG', 'gremlinC', 'sentinelle'],
-  10: ['slimeM', 'ver', 'cultiste', 'poux', 'slimeG', 'gremlinC', 'sentinelle'],
+  5: ['slimeM', 'ver', 'gremlinF', 'cultiste', 'byrd', 'poux', 'slimeG', 'gremlinC', 'serpenteau', 'mystique'],
+  6: ['slimeM', 'ver', 'gremlinF', 'cultiste', 'byrd', 'poux', 'slimeG', 'gremlinC', 'serpenteau', 'mystique', 'orbe_gardien'],
+  7: ['slimeM', 'ver', 'gremlinF', 'cultiste', 'byrd', 'poux', 'slimeG', 'gremlinC', 'mystique', 'orbe_gardien', 'apparition'],
+  8: ['slimeM', 'ver', 'cultiste', 'byrd', 'poux', 'slimeG', 'gremlinC', 'sentinelle', 'mystique', 'orbe_gardien', 'apparition'],
+  9: ['slimeM', 'ver', 'cultiste', 'byrd', 'poux', 'slimeG', 'gremlinC', 'sentinelle', 'mystique', 'orbe_gardien', 'apparition'],
+  10: ['slimeM', 'ver', 'cultiste', 'poux', 'slimeG', 'gremlinC', 'sentinelle', 'orbe_gardien', 'apparition'],
 };
+
+// Mini-boss disponibles pour clore les combats normaux (déblocage progressif)
+function miniBossPool(index: number): string[] {
+  const pool: string[] = [];
+  if (index >= 5) pool.push('miniMystique', 'miniRepto');
+  if (index >= 6) pool.push('miniAutomate');
+  if (index >= 8) pool.push('miniSpectre');
+  return pool;
+}
 
 function budgetFor(combat: number, wave: number): number {
   return (7 + 2.2 * combat) * (1 + 0.15 * (wave - 1));
@@ -104,7 +114,12 @@ export function generateWaves(def: CombatDef, rng: RNG): WaveDef[] {
       tPortal[portal] += 0.8 + rng.next() * 0.8;
     }
 
-    // Vague finale des combats spéciaux : élite / boss + escorte
+    // La Gemme Voleuse : objectif bonus occasionnel (dès le combat 3)
+    if (def.index >= 3 && rng.chance(0.12)) {
+      spawns.push({ enemyId: 'gemme', portalId: active[rng.int(active.length)], time: 2 + rng.next() * 6 });
+    }
+
+    // Vague finale : mini-boss (combats normaux tardifs), élite ou boss
     if (w === def.waves) {
       const lastPortal = active[rng.int(active.length)];
       if (def.kind === 'elite') {
@@ -115,6 +130,11 @@ export function generateWaves(def: CombatDef, rng: RNG): WaveDef[] {
         // escorte d'honneur
         for (let k = 0; k < 4; k++) {
           spawns.push({ enemyId: 'slimeG', portalId: active[k % active.length], time: 5 + k * 2 });
+        }
+      } else {
+        const minis = miniBossPool(def.index);
+        if (minis.length) {
+          spawns.push({ enemyId: rng.pick(minis), portalId: lastPortal, time: 3 });
         }
       }
     }

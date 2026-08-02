@@ -94,6 +94,11 @@ export interface EnemyDef {
   splitInto?: { id: string; count: number };
   enrage?: { hpPct: number; speedMult: number };
   accelerate?: { every: number; mult: number; cap: number };
+  healAura?: { radius: number; hps: number }; // soigne les alliés proches (pas lui-même)
+  artifactHits?: number; // bloque entièrement les N premiers coups directs
+  phase?: { cycle: number; duration: number }; // intangible `duration`s à la fin de chaque cycle
+  summon?: { id: string; every: number; count: number }; // invoque des renforts périodiquement
+  treasure?: boolean; // ne blesse pas le Cœur : s'échappe (tuez-la pour la prime !)
   desc?: string;
 }
 
@@ -114,6 +119,9 @@ export interface EnemyInst {
   accelMult: number;
   accelTimer: number;
   enraged: boolean;
+  artifact: number; // charges d'artefact restantes (blocage de coups)
+  phaseT: number; // horloge du cycle d'intangibilité
+  summonT: number; // horloge d'invocation
   alive: boolean;
   bounty: number;
   heartDmg: number;

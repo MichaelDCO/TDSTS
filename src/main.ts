@@ -1,7 +1,8 @@
 import './style.css';
 import { playSfx, toggleMute } from './audio';
 import { CELL } from './const';
-import { setupCombat, startWave, updateCombat } from './combat';
+import { damageEnemy, setupCombat, startWave, updateCombat } from './combat';
+import { ENEMIES } from './data/enemies';
 import { render } from './render';
 import { buyTower, cellBuildable, fuseTowers, placeTower, rerollShop, sellTower, upgradeTower } from './shop';
 import {
@@ -203,6 +204,8 @@ requestAnimationFrame(frame);
   showPopover,
   openBenchSheet,
   openShopSheet,
+  damageEnemy,
+  ENEMIES,
   applyAugment,
   pickAugmentOffers,
   towerEffStats,
